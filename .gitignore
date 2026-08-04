@@ -1,0 +1,34 @@
+# 依赖
+node_modules/
+.pnp/
+.pnp.js
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+env/
+
+# 本地数据库（运行时生成）
+*.db
+*.sqlite3
+
+# 密钥 / 环境变量
+.env
+.env.local
+
+# 编辑器 / 系统
+.DS_Store
+.idea/
+.vscode/
+
+# 内部 / 代理
+.codebuddy/
+
+# 日志
+*.log
+
+# 编辑器 / 环境配置
+.cloudstudio
