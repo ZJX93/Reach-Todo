@@ -21,10 +21,14 @@ async def summary(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    """周回顾 / 数据看板：本周完成、连续天数、专注时长、各维度与目标进展。"""
-    now = datetime.now()
-    week_ago = now - timedelta(days=7)
-    today = date.today()
+    """周回顾 / 数据看板：本周完成、连续天数、专注时长、各维度与目标进展。
+
+    时区修复：completed_at / started_at 入库为 UTC aware，统一在 UTC 下计算，
+    避免与本地 naive 时间比较造成的「凌晨完成任务 streak 断签」问题。
+    """
+    now = datetime.now(timezone.utc)
+    week_ago = (now - timedelta(days=7)).replace(tzinfo=None)
+    today = now.date()
 
     # 全部任务
     tasks = (

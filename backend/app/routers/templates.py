@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models import Template, User
 from ..schemas import TemplateCreate, TemplateUpdate, TemplateOut
 from ..deps import get_current_user
+from ..sanitize import sanitize_html
 
 router = APIRouter(prefix="/api/templates", tags=["templates"])
 
@@ -34,6 +35,7 @@ async def create_template(
     current: User = Depends(get_current_user),
 ):
     t = Template(user_id=current.id, is_preset=False, **payload.model_dump())
+    t.content = sanitize_html(t.content)
     db.add(t)
     await db.commit()
     await db.refresh(t)

@@ -1,5 +1,5 @@
 from datetime import date, datetime
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -7,6 +7,7 @@ from ..database import get_db
 from ..models import Record, User, Template, Task
 from ..schemas import RecordCreate, RecordUpdate, RecordOut, CalendarDay
 from ..deps import get_current_user
+from ..sanitize import sanitize_html
 
 router = APIRouter(prefix="/api/records", tags=["records"])
 
@@ -18,6 +19,8 @@ async def list_records(
     date: str | None = None,  # YYYY-MM-DD
     from_date: str | None = None,
     to_date: str | None = None,
+    limit: int = Query(50, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
@@ -38,6 +41,7 @@ async def list_records(
     qry = qry.order_by(
         Record.record_date.desc(), Record.record_time.desc(), Record.created_at.desc()
     )
+    qry = qry.limit(limit).offset(offset)
     res = await db.scalars(qry)
     return [RecordOut.model_validate(r) for r in res]
 
@@ -139,6 +143,8 @@ async def create_record(
         data["title"] = "无标题记录"
     if not data.get("record_date"):
         data["record_date"] = date.today()
+    # XSS 防护：服务端清洗富文本
+    data["content"] = sanitize_html(data.get("content"))
     r = Record(user_id=current.id, **data)
     db.add(r)
     await db.commit()
@@ -157,6 +163,8 @@ async def update_record(
     if not r or r.user_id != current.id:
         raise HTTPException(status_code=404, detail="记录不存在")
     for k, v in payload.model_dump(exclude_unset=True).items():
+        if k == "content":
+            v = sanitize_html(v)
         setattr(r, k, v)
     await db.commit()
     await db.refresh(r)

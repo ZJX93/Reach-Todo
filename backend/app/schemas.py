@@ -1,14 +1,23 @@
 from datetime import datetime, date
-from typing import Optional
+from typing import Optional, Literal
+from pydantic import BaseModel, ConfigDict, Field
 
-from pydantic import BaseModel, ConfigDict
+
+# 枚举值集中定义，避免散落字符串导致脏数据入库
+Priority = Literal["low", "normal", "high", "urgent"]      # 紧急度
+Importance = Literal["low", "normal", "high"]              # 重要度
+Recurrence = Literal["none", "daily", "weekly", "monthly"]
+TaskStatus = Literal["todo", "done"]
+RecordType = Literal["diary", "worklog", "note"]
+TemplateType = Literal["diary", "worklog", "note", "all"]
+GoalStatus = Literal["active", "done"]
 
 
 # ---------------- 用户 / 认证 ----------------
 class UserCreate(BaseModel):
-    username: str
-    email: Optional[str] = None
-    password: str
+    username: str = Field(min_length=3, max_length=30, pattern=r"^[A-Za-z0-9_]+$")
+    email: Optional[str] = Field(default=None, max_length=255)
+    password: str = Field(min_length=6, max_length=128)
 
 
 class UserOut(BaseModel):
@@ -28,17 +37,17 @@ class TokenOut(BaseModel):
 
 # ---------------- 维度 (Category) ----------------
 class CategoryCreate(BaseModel):
-    name: str
-    color: str = "#3B82F6"
-    icon: str = "📁"
-    sort_order: int = 0
+    name: str = Field(min_length=1, max_length=50)
+    color: str = Field(default="#3B82F6", max_length=20)
+    icon: str = Field(default="📁", max_length=20)
+    sort_order: int = Field(default=0, ge=0, le=9999)
 
 
 class CategoryUpdate(BaseModel):
-    name: Optional[str] = None
-    color: Optional[str] = None
-    icon: Optional[str] = None
-    sort_order: Optional[int] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=50)
+    color: Optional[str] = Field(default=None, max_length=20)
+    icon: Optional[str] = Field(default=None, max_length=20)
+    sort_order: Optional[int] = Field(default=None, ge=0, le=9999)
 
 
 class CategoryOut(BaseModel):
@@ -54,16 +63,16 @@ class CategoryOut(BaseModel):
 
 # ---------------- 目标 (Goal) ----------------
 class GoalCreate(BaseModel):
-    title: str
+    title: str = Field(min_length=1, max_length=200)
     description: Optional[str] = None
     deadline: Optional[date] = None
 
 
 class GoalUpdate(BaseModel):
-    title: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=200)
     description: Optional[str] = None
     deadline: Optional[date] = None
-    status: Optional[str] = None  # active | done
+    status: Optional[GoalStatus] = None  # active | done
 
 
 class GoalOut(BaseModel):
@@ -80,28 +89,28 @@ class GoalOut(BaseModel):
 
 # ---------------- 任务 (Task) ----------------
 class TaskCreate(BaseModel):
-    title: str
-    category_id: int
-    goal_id: Optional[int] = None
+    title: str = Field(min_length=1, max_length=300)
+    category_id: int = Field(ge=1)
+    goal_id: Optional[int] = Field(default=None, ge=1)
     note: Optional[str] = None
-    priority: str = "normal"  # low | normal | high | urgent（紧急度）
-    importance: str = "normal"  # low | normal | high（重要度）
-    recurrence: str = "none"  # none | daily | weekly | monthly
+    priority: Priority = "normal"
+    importance: Importance = "normal"
+    recurrence: Recurrence = "none"
     due_date: Optional[date] = None
-    due_time: Optional[str] = None  # HH:MM，截止时间精确到分
+    due_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 class TaskUpdate(BaseModel):
-    title: Optional[str] = None
-    category_id: Optional[int] = None
-    goal_id: Optional[int] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=300)
+    category_id: Optional[int] = Field(default=None, ge=1)
+    goal_id: Optional[int] = Field(default=None, ge=1)
     note: Optional[str] = None
-    priority: Optional[str] = None
-    importance: Optional[str] = None
-    recurrence: Optional[str] = None
-    status: Optional[str] = None  # todo | done
+    priority: Optional[Priority] = None
+    importance: Optional[Importance] = None
+    recurrence: Optional[Recurrence] = None
+    status: Optional[TaskStatus] = None  # todo | done
     due_date: Optional[date] = None
-    due_time: Optional[str] = None
+    due_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 class TaskOut(BaseModel):
@@ -138,7 +147,7 @@ class GoalBoardItem(BaseModel):
     user_id: int
     title: str
     description: Optional[str] = None
-    deadline: Optional[date] = None
+    deadline: Optional[date]
     status: str
     created_at: datetime
     # 聚合统计
@@ -150,8 +159,8 @@ class GoalBoardItem(BaseModel):
 
 # ---------------- 专注记录 (Focus) ----------------
 class FocusSessionCreate(BaseModel):
-    task_id: Optional[int] = None
-    minutes: int = 25
+    task_id: Optional[int] = Field(default=None, ge=1)
+    minutes: int = Field(default=25, ge=1, le=720)  # 1 分钟 ~ 12 小时，防脏数据污染统计
 
 
 class FocusSessionOut(BaseModel):
@@ -166,30 +175,30 @@ class FocusSessionOut(BaseModel):
 
 # ---------------- 记录 (Record) ----------------
 class RecordCreate(BaseModel):
-    type: str = "diary"  # diary | worklog | note
-    title: Optional[str] = None
+    type: RecordType = "diary"
+    title: Optional[str] = Field(default=None, max_length=200)
     content: Optional[str] = None
-    mood: Optional[str] = None
-    tags: Optional[str] = None
-    book_title: Optional[str] = None
-    book_author: Optional[str] = None
-    project: Optional[str] = None
+    mood: Optional[str] = Field(default=None, max_length=20)
+    tags: Optional[str] = Field(default=None, max_length=200)
+    book_title: Optional[str] = Field(default=None, max_length=200)
+    book_author: Optional[str] = Field(default=None, max_length=100)
+    project: Optional[str] = Field(default=None, max_length=100)
     record_date: Optional[date] = None
-    record_time: Optional[str] = None  # HH:MM，精确到分
-    template_id: Optional[int] = None  # 套用模板时用于预填
+    record_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
+    template_id: Optional[int] = Field(default=None, ge=1)
 
 
 class RecordUpdate(BaseModel):
-    type: Optional[str] = None
-    title: Optional[str] = None
+    type: Optional[RecordType] = None
+    title: Optional[str] = Field(default=None, max_length=200)
     content: Optional[str] = None
-    mood: Optional[str] = None
-    tags: Optional[str] = None
-    book_title: Optional[str] = None
-    book_author: Optional[str] = None
-    project: Optional[str] = None
+    mood: Optional[str] = Field(default=None, max_length=20)
+    tags: Optional[str] = Field(default=None, max_length=200)
+    book_title: Optional[str] = Field(default=None, max_length=200)
+    book_author: Optional[str] = Field(default=None, max_length=100)
+    project: Optional[str] = Field(default=None, max_length=100)
     record_date: Optional[date] = None
-    record_time: Optional[str] = None
+    record_time: Optional[str] = Field(default=None, pattern=r"^([01]\d|2[0-3]):[0-5]\d$")
 
 
 class RecordOut(BaseModel):
@@ -222,16 +231,16 @@ class CalendarDay(BaseModel):
 
 # ---------------- 模板 (Template) ----------------
 class TemplateCreate(BaseModel):
-    type: str = "diary"  # diary | worklog | note | all
-    name: str
-    icon: str = "📄"
+    type: TemplateType = "diary"
+    name: str = Field(min_length=1, max_length=100)
+    icon: str = Field(default="📄", max_length=20)
     content: Optional[str] = None
 
 
 class TemplateUpdate(BaseModel):
-    type: Optional[str] = None
-    name: Optional[str] = None
-    icon: Optional[str] = None
+    type: Optional[TemplateType] = None
+    name: Optional[str] = Field(default=None, min_length=1, max_length=100)
+    icon: Optional[str] = Field(default=None, max_length=20)
     content: Optional[str] = None
 
 

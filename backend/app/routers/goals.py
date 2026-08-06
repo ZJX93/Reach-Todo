@@ -29,34 +29,40 @@ async def board(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    """目标进度看板：每个目标的关联任务总数/完成数/逾期数/完成率。"""
+    """目标进度看板：每个目标的关联任务总数/完成数/逾期数/完成率。
+
+    优化：原先每个目标各发 3 次 count 查询（N+1）。改为一次 GROUP BY 聚合，
+    再用结果补齐未关联任何任务的目标（total=0）。
+    """
     from datetime import date
+
+    agg = (
+        await db.execute(
+            select(
+                Task.goal_id,
+                func.count(Task.id).label("total"),
+                func.count(Task.id).filter(Task.status == "done").label("done"),
+                func.count(Task.id)
+                .filter(Task.status == "todo", Task.due_date < date.today())
+                .label("overdue"),
+            ).where(Task.goal_id.isnot(None))
+            .group_by(Task.goal_id)
+        )
+    ).all()
+    by_goal = {row.goal_id: row for row in agg}
 
     goals = (await db.scalars(select(Goal).where(Goal.user_id == current.id))).all()
     out = []
     for g in goals:
-        total = await db.scalar(
-            select(func.count(Task.id)).where(Task.goal_id == g.id)
-        )
-        done = await db.scalar(
-            select(func.count(Task.id)).where(
-                Task.goal_id == g.id, Task.status == "done"
-            )
-        )
-        overdue = await db.scalar(
-            select(func.count(Task.id)).where(
-                Task.goal_id == g.id,
-                Task.status == "todo",
-                Task.due_date < date.today(),
-            )
-        )
-        total = total or 0
-        done = done or 0
+        row = by_goal.get(g.id)
+        total = row.total if row else 0
+        done = row.done if row else 0
+        overdue = row.overdue if row else 0
         progress = round(done / total * 100) if total else 0
         item = GoalBoardItem.model_validate(g)
         item.total = total
         item.done = done
-        item.overdue = overdue or 0
+        item.overdue = overdue
         item.progress = progress
         out.append(item)
     return out

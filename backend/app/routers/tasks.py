@@ -1,4 +1,5 @@
 from datetime import datetime, timezone, date, timedelta
+import calendar
 
 from fastapi import APIRouter, Depends, HTTPException, Query
 from sqlalchemy import select, func, or_
@@ -21,11 +22,10 @@ def next_occurrence(d: date | None, recurrence: str) -> date:
     if recurrence == "weekly":
         return base + timedelta(days=7)
     if recurrence == "monthly":
-        try:
-            return base.replace(month=base.month + 1)
-        except ValueError:
-            # 跨年：月+1 溢出，进位到次年 1 月
-            return base.replace(year=base.year + 1, month=1)
+        # 钳制到目标月份的最后一天，正确处理 1/31→2/28、3/31→4/30、12/31→次年1/31 等
+        y, m = (base.year + 1, 1) if base.month == 12 else (base.year, base.month + 1)
+        last_day = calendar.monthrange(y, m)[1]
+        return date(y, m, min(base.day, last_day))
     return base
 
 
@@ -45,6 +45,8 @@ async def list_tasks(
     status: str | None = None,
     priority: str | None = None,
     importance: str | None = None,
+    limit: int = Query(100, ge=1, le=500),
+    offset: int = Query(0, ge=0),
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
@@ -66,6 +68,7 @@ async def list_tasks(
     if importance:
         q = q.where(Task.importance == importance)
     q = q.order_by(Category.sort_order, Task.sort_order, Task.created_at)
+    q = q.limit(limit).offset(offset)
     res = await db.scalars(q)
     return [_to_out(t) for t in res]
 
