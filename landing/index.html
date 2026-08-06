@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>GoalFlow · 个人成长操作系统</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0f172a; --ink-2:#475569; --ink-3:#94a3b8;
+    --b1:#2563eb; --b2:#06b6d4; --b3:#14b8a6;
+    --grad:linear-gradient(135deg,#2563eb 0%,#06b6d4 55%,#14b8a6 100%);
+    --glass:rgba(255,255,255,.55);
+    --glass-2:rgba(255,255,255,.4);
+    --glass-bd:rgba(255,255,255,.75);
+    --glass-line:rgba(15,23,42,.06);
+    --shadow:0 20px 50px -20px rgba(8,145,178,.35);
+    --shadow-sm:0 8px 24px -12px rgba(8,145,178,.3);
+    --r:24px; --r-sm:14px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;--s9:96px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{
+    font-family:"Plus Jakarta Sans","Noto Sans SC",system-ui,sans-serif;
+    color:var(--ink);
+    background:linear-gradient(160deg,#eef6ff 0%,#e6fbff 50%,#ecfdf5 100%);
+    line-height:1.6; overflow-x:hidden;
+  }
+  h1,h2,h3,.display{font-family:"Sora","Noto Sans SC",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 var(--s5)}
+  a{color:inherit;text-decoration:none}
+  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .btn{
+    display:inline-flex;align-items:center;gap:var(--s2);
+    font-weight:600;font-size:15px;padding:13px 24px;border-radius:999px;
+    transition:transform .2s ease, box-shadow .2s ease, opacity .2s ease; cursor:pointer;border:none;
+  }
+  .btn-primary{background:var(--grad);color:#fff;box-shadow:var(--shadow-sm)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .btn-primary:active{transform:translateY(0) scale(.98)}
+  .btn-ghost{background:var(--glass);border:1px solid var(--glass-bd);color:var(--ink);backdrop-filter:blur(12px)}
+  .btn-ghost:hover{transform:translateY(-2px)}
+  .btn-ghost:active{transform:translateY(0) scale(.98)}
+  .btn:focus-visible{outline:3px solid var(--b2);outline-offset:3px}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+  .eyebrow{font-size:13px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;color:var(--b2)}
+  .glass{
+    background:var(--glass);border:1px solid var(--glass-bd);border-radius:var(--r);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:var(--shadow);
+  }
+  /* animated background blobs */
+  .blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.5;z-index:-1;pointer-events:none}
+  .b1{width:520px;height:520px;background:#60a5fa;top:-120px;left:-100px;animation:float1 16s ease-in-out infinite}
+  .b2{width:460px;height:460px;background:#22d3ee;bottom:-120px;right:-80px;animation:float2 19s ease-in-out infinite}
+  .b3{width:380px;height:380px;background:#5eead4;top:40%;left:55%;animation:float3 22s ease-in-out infinite}
+  @keyframes float1{50%{transform:translate(60px,40px) scale(1.08)}}
+  @keyframes float2{50%{transform:translate(-50px,-40px) scale(1.1)}}
+  @keyframes float3{50%{transform:translate(-40px,50px) scale(1.05)}}
+
+  /* nav */
+  nav{position:sticky;top:0;z-index:50;margin:var(--s4);border-radius:999px}
+  nav .inner{display:flex;align-items:center;justify-content:space-between;padding:12px 22px;
+    background:var(--glass);border:1px solid var(--glass-bd);border-radius:999px;backdrop-filter:blur(16px);box-shadow:var(--shadow-sm)}
+  .logo{display:flex;align-items:center;gap:10px;font-family:"Sora";font-weight:800;font-size:20px}
+  .logo .mark{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;color:#fff;font-size:16px}
+  .nav-links{display:flex;gap:var(--s6);font-size:14px;font-weight:500;color:var(--ink-2)}
+  .nav-links a:hover{color:var(--b1)}
+  .nav-cta{display:flex;align-items:center;gap:var(--s3)}
+
+  /* hero */
+  .hero{display:grid;grid-template-columns:1.05fr .95fr;gap:var(--s8);align-items:center;padding:var(--s9) 0 var(--s8)}
+  .hero h1{font-size:clamp(34px,5vw,56px);line-height:1.1;font-weight:800;letter-spacing:-.02em;margin:var(--s4) 0}
+  .hero p.sub{font-size:18px;color:var(--ink-2);max-width:30em;margin-bottom:var(--s6)}
+  .hero-cta{display:flex;gap:var(--s3);flex-wrap:wrap;align-items:center}
+  .note{font-size:13px;color:var(--ink-3);margin-top:var(--s4)}
+  .hero-art{position:relative}
+  /* app preview mock */
+  .preview{padding:var(--s5);border-radius:28px}
+  .pv-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s4)}
+  .pv-tag{font-size:12px;font-weight:700;color:var(--b1);background:rgba(37,99,235,.1);padding:5px 12px;border-radius:999px}
+  .pv-row{display:flex;gap:var(--s3);margin-bottom:var(--s3)}
+  .pv-card{flex:1;background:var(--glass-2);border:1px solid var(--glass-bd);border-radius:var(--r-sm);padding:14px}
+  .pv-card .t{font-size:12px;color:var(--ink-3);font-weight:600}
+  .pv-card .n{font-size:26px;font-weight:800;font-family:"Sora"}
+  .pv-list{background:var(--glass-2);border:1px solid var(--glass-bd);border-radius:var(--r-sm);padding:14px}
+  .pv-item{display:flex;align-items:center;gap:10px;padding:9px 0;border-bottom:1px solid var(--glass-line);font-size:14px}
+  .pv-item:last-child{border-bottom:none}
+  .dot{width:16px;height:16px;border-radius:6px;flex:none}
+  .pv-cal{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+  .pv-day{width:30px;height:34px;border-radius:8px;background:var(--glass);border:1px solid var(--glass-bd);display:grid;place-items:center;font-size:12px;font-weight:600}
+  .pv-day.on{background:var(--grad);color:#fff;border:none}
+
+  /* sections */
+  section{padding:var(--s8) 0}
+  .sec-head{text-align:center;max-width:680px;margin:0 auto var(--s7)}
+  .sec-head h2{font-size:clamp(26px,3.4vw,38px);font-weight:800;letter-spacing:-.01em}
+  .sec-head p{color:var(--ink-2);font-size:17px;margin-top:var(--s3)}
+  .grid-feat{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s5)}
+  .feat{padding:var(--s5);transition:transform .25s ease, box-shadow .25s ease}
+  .feat:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .feat:nth-child(1),.feat:nth-child(4),.feat:nth-child(5){grid-column:span 2}
+  .feat:nth-child(2),.feat:nth-child(3),.feat:nth-child(6){grid-column:span 1}
+  .feat .ic{width:48px;height:48px;border-radius:14px;display:grid;place-items:center;background:rgba(255,255,255,.6);border:1px solid var(--glass-bd);margin-bottom:var(--s4);color:var(--b1)}
+  .feat .ic svg{width:24px;height:24px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .node .ic{color:var(--b1)}
+  .node .ic svg{width:34px;height:34px;stroke:currentColor;stroke-width:1.6;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .mark svg{width:18px;height:18px;stroke:#fff;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+  .feat h3{font-size:19px;font-weight:700;margin-bottom:8px}
+  .feat p{color:var(--ink-2);font-size:14.5px}
+
+  /* steps */
+  .steps{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s5)}
+  .step{padding:var(--s5);text-align:center}
+  .step .num{width:46px;height:46px;border-radius:50%;background:var(--grad);color:#fff;display:grid;place-items:center;font-family:"Sora";font-weight:800;font-size:18px;margin:0 auto var(--s4)}
+  .step h3{font-size:18px;font-weight:700;margin-bottom:8px}
+  .step p{color:var(--ink-2);font-size:14.5px}
+
+  /* linkage */
+  .link-band{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s5);align-items:center}
+  .node{padding:var(--s5);text-align:center}
+  .node .ic{font-size:34px;margin-bottom:10px}
+  .node h3{font-size:18px;font-weight:700}
+  .node p{color:var(--ink-2);font-size:14px;margin-top:6px}
+  .connector{display:flex;align-items:center;justify-content:center;color:var(--b2);font-size:22px;font-weight:700}
+
+  /* cta */
+  .cta{padding:var(--s8);text-align:center;margin:var(--s7) 0}
+  .cta h2{font-size:clamp(26px,3.6vw,40px);font-weight:800;letter-spacing:-.01em}
+  .cta p{color:var(--ink-2);font-size:17px;margin:var(--s3) auto var(--s6);max-width:30em}
+
+  footer{padding:var(--s7) 0 var(--s8);color:var(--ink-3);font-size:14px}
+  .foot{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:var(--s4);border-top:1px solid var(--glass-line);padding-top:var(--s5)}
+  .foot a:hover{color:var(--b1)}
+
+  @media(max-width:900px){
+    .hero{grid-template-columns:1fr;gap:var(--s7)}
+    .grid-feat,.steps,.link-band{grid-template-columns:1fr}
+    .grid-feat .feat:nth-child(n){grid-column:auto}
+    .connector{transform:rotate(90deg)}
+    .nav-links{display:none}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .blob,.b1,.b2,.b3{animation:none}
+    .btn,.feat{transition:none}
+    .btn-primary:hover,.btn-ghost:hover,.feat:hover{transform:none}
+  }
+</style>
+</head>
+<body>
+  <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+
+  <nav>
+    <div class="inner">
+      <div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></span> GoalFlow</div>
+      <div class="nav-links">
+        <a href="#features">功能</a>
+        <a href="#flow">工作流</a>
+        <a href="#link">模块联动</a>
+        <a href="#start">开始</a>
+      </div>
+      <div class="nav-cta">
+        <a href="#" class="btn btn-ghost">登录</a>
+        <a href="#start" class="btn btn-primary">免费开始</a>
+      </div>
+    </div>
+  </nav>
+
+  <div class="wrap">
+    <!-- HERO -->
+    <header class="hero">
+      <div>
+        <span class="eyebrow">个人成长操作系统</span>
+        <h1>记录今天，<br/><span class="grad-text">规划明天，专注此刻。</span></h1>
+        <p class="sub">GoalFlow 把日记、工作日志、读书笔记、待办、农历日历、目标与专注计时，收进同一个清爽的系统。一处记录，处处可见。</p>
+        <div class="hero-cta">
+          <a href="#start" class="btn btn-primary">免费开始 →</a>
+          <a href="#features" class="btn btn-ghost">看看功能</a>
+        </div>
+        <p class="note">无需信用卡 · 数据本地优先 · 网页端即用</p>
+      </div>
+
+      <div class="hero-art">
+        <div class="glass preview">
+          <div class="pv-head">
+            <strong style="font-family:'Sora'">今日概览</strong>
+            <span class="pv-tag">2026 · 闰六月</span>
+          </div>
+          <div class="pv-row">
+            <div class="pv-card"><div class="t">今日待办</div><div class="n">5</div></div>
+            <div class="pv-card"><div class="t">进行中目标</div><div class="n">3</div></div>
+          </div>
+          <div class="pv-list">
+            <div class="pv-item"><span class="dot" style="background:var(--b1)"></span> 写周报初稿 <span style="margin-left:auto;color:var(--ink-3);font-size:12px">14:30</span></div>
+            <div class="pv-item"><span class="dot" style="background:var(--b2)"></span> 读《认知觉醒》第 3 章 <span style="margin-left:auto;color:var(--ink-3);font-size:12px">读书</span></div>
+            <div class="pv-item"><span class="dot" style="background:var(--b3)"></span> 复盘今日三件事 <span style="margin-left:auto;color:var(--ink-3);font-size:12px">日记</span></div>
+            <div class="pv-cal">
+              <div class="pv-day">一</div><div class="pv-day">二</div><div class="pv-day on">5</div>
+              <div class="pv-day">四</div><div class="pv-day">五</div><div class="pv-day">六</div><div class="pv-day">日</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </header>
+
+    <!-- FEATURES -->
+    <section id="features">
+      <div class="sec-head">
+        <span class="eyebrow">一个 App，六种能力</span>
+        <h2>把零散的习惯，收进一个系统</h2>
+        <p>每个模块都打磨过细节——从富文本模板到农历节气，从四象限到番茄钟。</p>
+      </div>
+      <div class="grid-feat">
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></div>
+          <h3>多维记录</h3>
+          <p>日记 / 工作日志 / 读书笔记，内置多套模板，支持加粗、字体、字号、颜色富文本。</p>
+        </div>
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div>
+          <h3>今日待办</h3>
+          <p>艾森豪威尔四象限分清轻重，重复任务自动顺延，只看今天该做的。</p>
+        </div>
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div>
+          <h3>农历日历</h3>
+          <p>显示农历与二十四节气，记录与待办直接联动到具体日期。</p>
+        </div>
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></svg></div>
+          <h3>目标看板</h3>
+          <p>把任务挂到目标下，进度自动汇总，一眼看清离目标还有多远。</p>
+        </div>
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg></div>
+          <h3>专注计时</h3>
+          <p>番茄钟配合任务，专注时长自动沉淀，回顾每天的时间花在哪。</p>
+        </div>
+        <div class="glass feat">
+          <div class="ic"><svg viewBox="0 0 24 24"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></svg></div>
+          <h3>模块联动</h3>
+          <p>在日历写下的记录，点开即是完整正文；待办到期自动出现在今日视图。</p>
+        </div>
+      </div>
+    </section>
+
+    <!-- FLOW -->
+    <section id="flow">
+      <div class="sec-head">
+        <span class="eyebrow">三步形成闭环</span>
+        <h2>记录 → 规划 → 专注</h2>
+        <p>不是又一个待办清单，而是一条让想法落地的闭环。</p>
+      </div>
+      <div class="steps">
+        <div class="glass step"><div class="num">1</div><h3>记录灵感</h3><p>随时写下日记、日志或读书笔记，模板帮你开头。</p></div>
+        <div class="glass step"><div class="num">2</div><h3>规划任务</h3><p>把想法拆成今日待办，四象限帮你分清优先级。</p></div>
+        <div class="glass step"><div class="num">3</div><h3>专注执行</h3><p>用番茄钟推进任务，日历与记录同步沉淀每一天。</p></div>
+      </div>
+    </section>
+
+    <!-- LINKAGE -->
+    <section id="link">
+      <div class="sec-head">
+        <span class="eyebrow">独特之处</span>
+        <h2>一处记录，处处可见</h2>
+        <p>模块之间不是孤岛，而是同一份数据的不同切面。</p>
+      </div>
+      <div class="link-band">
+        <div class="glass node"><div class="ic"><svg viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><line x1="10" y1="9" x2="8" y2="9"/></svg></div><h3>记录</h3><p>在日历某天写下的日记</p></div>
+        <div class="connector">→</div>
+        <div class="glass node"><div class="ic"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg></div><h3>日历</h3><p>自动落在对应日期格</p></div>
+        <div class="connector">→</div>
+        <div class="glass node"><div class="ic"><svg viewBox="0 0 24 24"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg></div><h3>待办</h3><p>当天任务汇成今日视图</p></div>
+      </div>
+    </section>
+
+    <!-- CTA -->
+    <section id="start">
+      <div class="glass cta">
+        <h2>现在开始，给生活一个<span class="grad-text">清晰的系统</span></h2>
+        <p>几分钟搭好你的记录与计划，今天就开始更从容地生活与工作。</p>
+        <a href="#" class="btn btn-primary">免费开始使用 GoalFlow →</a>
+      </div>
+    </section>
+
+    <footer>
+      <div class="foot">
+        <div class="logo"><span class="mark"><svg viewBox="0 0 24 24"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></svg></span> GoalFlow</div>
+        <div style="display:flex;gap:var(--s5)">
+          <a href="#features">功能</a><a href="#flow">工作流</a><a href="#link">联动</a><a href="#start">开始</a>
+        </div>
+        <div>© 2026 GoalFlow · 个人成长操作系统</div>
+      </div>
+    </footer>
+  </div>
+</body>
+</html>

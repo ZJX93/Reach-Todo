@@ -14,7 +14,7 @@ router = APIRouter(prefix="/api/auth", tags=["auth"])
 DEFAULT_CATEGORIES = [
     {"name": "工作", "color": "#3B82F6", "icon": "💼", "sort_order": 0},
     {"name": "健康", "color": "#10B981", "icon": "💪", "sort_order": 1},
-    {"name": "学习", "color": "#8B5CF6", "icon": "📚", "sort_order": 2},
+    {"name": "学习", "color": "#06B6D4", "icon": "📚", "sort_order": 2},
     {"name": "生活", "color": "#F59E0B", "icon": "🏠", "sort_order": 3},
 ]
 

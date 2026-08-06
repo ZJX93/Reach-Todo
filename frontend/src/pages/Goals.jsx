@@ -1,16 +1,22 @@
 import { useState, useEffect } from 'react'
-import { Link } from 'react-router-dom'
 import api from '../api.js'
+import Layout from './Layout.jsx'
+import { header, card, field, btnPrim, Icon } from './ui.jsx'
 
 export default function Goals() {
   const [goals, setGoals] = useState([])
+  const [summary, setSummary] = useState(null)
   const [title, setTitle] = useState('')
   const [desc, setDesc] = useState('')
   const [loading, setLoading] = useState(true)
 
   const load = async () => {
-    const res = await api.get('/goals/board')
-    setGoals(res.data)
+    const [g, s] = await Promise.all([
+      api.get('/goals/board'),
+      api.get('/tasks/summary'),
+    ])
+    setGoals(g.data)
+    setSummary(s.data)
     setLoading(false)
   }
   useEffect(() => {
@@ -39,118 +45,121 @@ export default function Goals() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-50">
-      <header className="bg-white border-b border-slate-200 px-6 py-4 flex items-center justify-between">
-        <div>
-          <h1 className="text-lg font-semibold text-slate-800">🎯 我的目标</h1>
-          <p className="text-xs text-slate-400">给待办关联目标，让每件事都有方向</p>
-        </div>
-        <Link to="/" className="text-sm text-indigo-600 hover:underline">
-          ← 返回看板
-        </Link>
-      </header>
+    <Layout summary={summary} selected="goals" onSelect={() => {}}>
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <header className={header}>
+          <h1 className="text-lg font-bold text-[#0f172a] font-display">我的目标</h1>
+          <p className="text-xs text-[#475569]">
+            给待办关联目标，让每件事都有方向
+          </p>
+        </header>
 
-      <div className="max-w-2xl mx-auto p-6">
-        <form
-          onSubmit={add}
-          className="bg-white rounded-xl border border-slate-200 p-4 space-y-3 mb-6"
-        >
-          <input
-            value={title}
-            onChange={(e) => setTitle(e.target.value)}
-            placeholder="目标标题，例如：三个月减重 5 公斤"
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:border-indigo-500"
-          />
-          <textarea
-            value={desc}
-            onChange={(e) => setDesc(e.target.value)}
-            placeholder="描述（可选）"
-            rows={2}
-            className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:border-indigo-500"
-          />
-          <button
-            type="submit"
-            className="bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium px-4 py-2 rounded-lg"
+        <div className="max-w-2xl mx-auto p-5 md:p-7">
+          <form
+            onSubmit={add}
+            className={`${card} p-4 space-y-3 mb-6`}
           >
-            + 新建目标
-          </button>
-        </form>
+            <input
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="目标标题，例如：三个月减重 5 公斤"
+              className={field}
+            />
+            <textarea
+              value={desc}
+              onChange={(e) => setDesc(e.target.value)}
+              placeholder="描述（可选）"
+              rows={2}
+              className={field}
+            />
+            <button type="submit" className={btnPrim}>
+              + 新建目标
+            </button>
+          </form>
 
-        {loading ? (
-          <p className="text-slate-400 text-sm">加载中…</p>
-        ) : goals.length === 0 ? (
-          <p className="text-slate-400 text-sm">还没有目标，先建一个吧。</p>
-        ) : (
-          <div className="space-y-3">
-            {goals.map((g) => (
-              <div
-                key={g.id}
-                className={`flex items-start gap-3 p-4 rounded-xl border ${
-                  g.status === 'done'
-                    ? 'bg-slate-50 border-slate-100'
-                    : 'bg-white border-slate-200'
-                }`}
-              >
-                <input
-                  type="checkbox"
-                  checked={g.status === 'done'}
-                  onChange={() => toggle(g)}
-                  className="mt-1 w-4 h-4 accent-indigo-600"
-                />
-                <div className="flex-1">
-                  <div
-                    className={`text-sm font-medium ${
+          {loading ? (
+            <p className="text-[#94a3b8] text-sm">加载中…</p>
+          ) : goals.length === 0 ? (
+            <p className="text-[#94a3b8] text-sm">还没有目标，先建一个吧。</p>
+          ) : (
+            <div className="space-y-3">
+              {goals.map((g) => (
+                <div
+                  key={g.id}
+                  className={`flex items-start gap-3.5 p-4 rounded-2xl border transition ${
+                    g.status === 'done'
+                      ? 'bg-white/30 border-white/75'
+                      : 'bg-white/55 border-white/75 shadow-[0_8px_24px_-12px_rgba(8,145,178,0.30)]'
+                  }`}
+                >
+                  <button
+                    onClick={() => toggle(g)}
+                    aria-label="切换目标完成"
+                    className={`mt-0.5 w-[22px] h-[22px] shrink-0 rounded-lg border-2 grid place-items-center text-white text-[13px] transition ${
                       g.status === 'done'
-                        ? 'line-through text-slate-400'
-                        : 'text-slate-800'
+                        ? 'brand-gradient border-transparent'
+                        : 'border-[#94a3b8] hover:border-[#06b6d4]'
                     }`}
                   >
-                    {g.title}
-                  </div>
-                  {g.description && (
-                    <div className="text-xs text-slate-400 mt-1">
-                      {g.description}
+                    {g.status === 'done' ? '✓' : ''}
+                  </button>
+                  <div className="flex-1 min-w-0">
+                    <div
+                      className={`text-sm font-semibold ${
+                        g.status === 'done'
+                          ? 'line-through text-[#94a3b8]'
+                          : 'text-[#0f172a]'
+                      }`}
+                    >
+                      {g.title}
                     </div>
-                  )}
-                  {g.deadline && (
-                    <div className="text-xs text-slate-400 mt-1">
-                      截止：{g.deadline}
-                    </div>
-                  )}
+                    {g.description && (
+                      <div className="text-xs text-[#94a3b8] mt-1">
+                        {g.description}
+                      </div>
+                    )}
+                    {g.deadline && (
+                      <div className="text-xs text-[#94a3b8] mt-1">
+                        截止：{g.deadline}
+                      </div>
+                    )}
 
-                  {/* 进度条 + 统计 */}
-                  <div className="mt-2">
-                    <div className="flex items-center justify-between text-[11px] text-slate-400 mb-1">
-                      <span>
-                        完成 {g.done}/{g.total}
-                        {g.overdue > 0 && (
-                          <span className="text-red-500 ml-2">
-                            ⚠ 逾期 {g.overdue}
-                          </span>
-                        )}
-                      </span>
-                      <span>{g.progress}%</span>
-                    </div>
-                    <div className="h-1.5 rounded-full bg-slate-100 overflow-hidden">
-                      <div
-                        className="h-full rounded-full bg-indigo-500"
-                        style={{ width: `${g.progress}%` }}
-                      ></div>
+                    <div className="mt-2.5">
+                      <div className="flex items-center justify-between text-[11px] text-[#475569] mb-1">
+                        <span>
+                          完成 {g.done}/{g.total}
+                          {g.overdue > 0 && (
+                            <span className="text-[#ef4444] ml-2">
+                              逾期 {g.overdue}
+                            </span>
+                          )}
+                        </span>
+                        <span className="font-semibold text-[#475569]">
+                          {g.progress}%
+                        </span>
+                      </div>
+                      <div className="h-2 rounded-full bg-white/60 overflow-hidden">
+                        <div
+                          className="h-full rounded-full brand-gradient"
+                          style={{ width: `${g.progress}%` }}
+                        ></div>
+                      </div>
                     </div>
                   </div>
+                  <button
+                    onClick={() => remove(g)}
+                    className="text-[#cbd5e1] hover:text-[#ef4444] text-sm transition shrink-0"
+                    title="删除"
+                    aria-label="删除"
+                  >
+                    <Icon.close />
+                  </button>
                 </div>
-                <button
-                  onClick={() => remove(g)}
-                  className="text-slate-300 hover:text-red-500 text-sm"
-                  title="删除"
-                >
-                  ✕
-                </button>
-              </div>
-            ))}
-          </div>
-        )}
-      </div>
-    </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </main>
+    </Layout>
   )
 }

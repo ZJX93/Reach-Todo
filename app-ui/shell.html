@@ -1,0 +1,601 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>抵达 · Reach — UI 重构原型（外壳）</title>
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@500;600;700;800&family=Plus+Jakarta+Sans:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500;700&display=swap" rel="stylesheet" />
+<style>
+  :root{
+    --ink:#0f172a; --ink-2:#475569; --ink-3:#94a3b8;
+    --b1:#2563eb; --b2:#06b6d4; --b3:#14b8a6;
+    --grad:linear-gradient(135deg,#2563eb 0%,#06b6d4 55%,#14b8a6 100%);
+    --glass:rgba(255,255,255,.55); --glass-2:rgba(255,255,255,.4); --glass-strong:rgba(255,255,255,.72);
+    --glass-bd:rgba(255,255,255,.75); --glass-line:rgba(15,23,42,.06);
+    --danger:#ef4444; --warn:#f59e0b; --ok:#14b8a6;
+    --bg:linear-gradient(160deg,#eef6ff 0%,#e6fbff 50%,#ecfdf5 100%);
+    --shadow:0 20px 50px -20px rgba(8,145,178,.35); --shadow-sm:0 8px 24px -12px rgba(8,145,178,.3);
+    --r:24px; --r-sm:14px; --r-pill:999px;
+    --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{font-family:"Plus Jakarta Sans","Noto Sans SC",system-ui,sans-serif;color:var(--ink);
+    background:var(--bg);line-height:1.6;overflow:hidden;min-height:100vh}
+  h1,h2,h3,.display{font-family:"Sora","Noto Sans SC",sans-serif}
+  .wrap{max-width:1180px;margin:0 auto;padding:0 var(--s5)}
+  a{color:inherit;text-decoration:none}
+  .grad-text{background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  svg.ic{width:20px;height:20px;stroke:currentColor;stroke-width:1.8;fill:none;stroke-linecap:round;stroke-linejoin:round;flex:none}
+  svg.brand-ic{width:18px;height:18px;stroke:#fff;stroke-width:2.2;fill:none;stroke-linecap:round;stroke-linejoin:round}
+
+  .blob{position:fixed;border-radius:50%;filter:blur(70px);opacity:.5;z-index:-1;pointer-events:none}
+  .b1{width:520px;height:520px;background:#60a5fa;top:-120px;left:-100px;animation:f1 16s ease-in-out infinite}
+  .b2{width:460px;height:460px;background:#22d3ee;bottom:-120px;right:-80px;animation:f2 19s ease-in-out infinite}
+  .b3{width:380px;height:380px;background:#5eead4;top:40%;left:55%;animation:f3 22s ease-in-out infinite}
+  @keyframes f1{50%{transform:translate(60px,40px) scale(1.08)}}
+  @keyframes f2{50%{transform:translate(-50px,-40px) scale(1.1)}}
+  @keyframes f3{50%{transform:translate(-40px,50px) scale(1.05)}}
+
+  /* buttons */
+  .btn{display:inline-flex;align-items:center;justify-content:center;gap:var(--s2);font-family:"Plus Jakarta Sans";
+    font-weight:600;font-size:15px;padding:13px 24px;border-radius:var(--r-pill);
+    transition:transform .2s ease,box-shadow .2s ease,opacity .2s ease;cursor:pointer;border:none}
+  .btn-primary{background:var(--grad);color:#fff;box-shadow:var(--shadow-sm)}
+  .btn-primary:hover{transform:translateY(-2px);box-shadow:var(--shadow)}
+  .btn-primary:active{transform:translateY(0) scale(.98)}
+  .btn-ghost{background:var(--glass);border:1px solid var(--glass-bd);color:var(--ink);backdrop-filter:blur(12px)}
+  .btn-ghost:hover{transform:translateY(-2px)}
+  .btn-ghost:active{transform:translateY(0) scale(.98)}
+  .btn:focus-visible{outline:3px solid var(--b2);outline-offset:3px}
+  .btn:disabled{opacity:.5;cursor:not-allowed;transform:none}
+
+  /* glass */
+  .glass{background:var(--glass);border:1px solid var(--glass-bd);border-radius:var(--r);
+    backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:var(--shadow)}
+
+  /* ============ LOGIN ============ */
+  #login{min-height:100vh;display:grid;place-items:center;padding:var(--s5)}
+  .login-card{width:min(420px,92vw);padding:var(--s7) var(--s6);text-align:center}
+  .login-brand{width:56px;height:56px;border-radius:18px;background:var(--grad);display:grid;place-items:center;margin:0 auto var(--s5);box-shadow:var(--shadow-sm)}
+  .login-card h1{font-size:24px;font-weight:800;margin-bottom:4px}
+  .login-card .sub{color:var(--ink-2);font-size:14px;margin-bottom:var(--s6)}
+  .field{text-align:left;margin-bottom:var(--s4)}
+  .field label{display:block;font-size:13px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+  .field input{width:100%;padding:12px 14px;border-radius:var(--r-sm);border:1px solid var(--glass-bd);
+    background:var(--glass-strong);font-size:15px;font-family:inherit;color:var(--ink);transition:border-color .2s,box-shadow .2s}
+  .field input:focus{outline:none;border-color:var(--b2);box-shadow:0 0 0 4px rgba(6,182,212,.18)}
+  .field.error input{border-color:var(--danger)}
+  .login-note{margin-top:var(--s5);font-size:12px;color:var(--ink-2)}
+  .login-card .btn{width:100%;margin-top:var(--s2)}
+
+  /* ============ APP SHELL ============ */
+  #app{display:none;height:100vh}
+  .shell{display:grid;grid-template-columns:264px 1fr;height:100vh}
+  /* sidebar */
+  .sidebar{margin:var(--s4);border-radius:var(--r);background:var(--glass);border:1px solid var(--glass-bd);
+    backdrop-filter:blur(18px);display:flex;flex-direction:column;overflow:hidden}
+  .sb-brand{display:flex;align-items:center;gap:10px;padding:var(--s5) var(--s5) var(--s4)}
+  .sb-mark{width:40px;height:40px;border-radius:14px;background:var(--grad);display:grid;place-items:center;flex:none;box-shadow:var(--shadow-sm)}
+  .sb-brand b{font-family:"Sora";font-size:17px;display:block;line-height:1.1}
+  .sb-brand small{font-size:11px;color:var(--ink-2)}
+  .sb-nav{flex:1;overflow-y:auto;padding:var(--s2) var(--s3);display:flex;flex-direction:column;gap:2px}
+  .sb-group{font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);
+    padding:var(--s4) var(--s3) 6px}
+  .nav-item{display:flex;align-items:center;gap:12px;width:100%;padding:11px 12px;border-radius:var(--r-sm);
+    background:transparent;border:none;cursor:pointer;font-family:inherit;font-size:14px;color:var(--ink-2);
+    text-align:left;transition:background .2s,color .2s,transform .15s;position:relative}
+  .nav-item:hover{background:var(--glass-2);color:var(--ink)}
+  .nav-item:active{transform:scale(.98)}
+  .nav-item:focus-visible{outline:3px solid var(--b2);outline-offset:2px}
+  .nav-item.active{color:var(--b1);font-weight:600;background:rgba(37,99,235,.08)}
+  .nav-item.active::before{content:"";position:absolute;left:0;top:8px;bottom:8px;width:3px;border-radius:3px;background:var(--grad)}
+  .nav-item .count{margin-left:auto;font-size:12px;color:var(--ink-2);font-weight:600}
+  .nav-item .dot{width:9px;height:9px;border-radius:50%;flex:none}
+  .sb-foot{border-top:1px solid var(--glass-line);padding:var(--s3);display:flex;flex-direction:column;gap:2px}
+  .sb-user{display:flex;align-items:center;justify-content:space-between;padding:6px 12px;font-size:13px;color:var(--ink-2)}
+  .sb-user button{font-size:12px;color:var(--ink-2);background:none;border:none;cursor:pointer;font-family:inherit}
+  .sb-user button:hover{color:var(--danger)}
+
+  /* main */
+  .main{overflow-y:auto;padding:var(--s5) var(--s6) var(--s7)}
+  .topbar{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s6)}
+  .topbar h2{font-size:26px;font-weight:800;letter-spacing:-.01em}
+  .topbar .date{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-2)}
+  .tag{font-size:12px;font-weight:700;color:var(--b1);background:rgba(37,99,235,.1);padding:5px 12px;border-radius:var(--r-pill)}
+
+  .stats{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s5);margin-bottom:var(--s6)}
+  .stat{padding:var(--s5);transition:transform .25s,box-shadow .25s}
+  .stat:hover{transform:translateY(-4px);box-shadow:var(--shadow)}
+  .stat .t{font-size:13px;color:var(--ink-2);font-weight:600}
+  .stat .n{font-family:"Sora";font-size:34px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent;line-height:1.1;margin-top:4px}
+  .stat .d{font-size:12px;color:var(--ink-2);margin-top:2px}
+
+  .panel{padding:var(--s5)}
+  .panel-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s4)}
+  .panel-head h3{font-size:18px;font-weight:700}
+  .panel-head .link{font-size:13px;font-weight:600;color:var(--b1)}
+  .todo{display:flex;align-items:center;gap:14px;padding:14px;border-radius:var(--r-sm);transition:background .2s}
+  .todo+.todo{border-top:1px solid var(--glass-line)}
+  .todo:hover{background:var(--glass-2)}
+  .check{width:22px;height:22px;border-radius:7px;border:2px solid var(--ink-3);flex:none;display:grid;place-items:center;cursor:pointer;transition:.2s}
+  .todo.done .check{background:var(--grad);border-color:transparent}
+  .todo.done .check svg{stroke:#fff;stroke-width:3}
+  .check svg{width:13px;height:13px;stroke:none;fill:none}
+  .todo .title{font-size:15px;font-weight:500}
+  .todo.done .title{color:var(--ink-2);text-decoration:line-through}
+  .prio{font-size:11px;font-weight:700;padding:3px 9px;border-radius:var(--r-pill)}
+  .prio.high{color:#b91c1c;background:rgba(239,68,68,.12)}
+  .prio.normal{color:var(--ink-2);background:rgba(15,23,42,.06)}
+  .todo .time{margin-left:auto;font-size:12px;color:var(--ink-2);font-weight:600}
+  .todo .cdot{width:9px;height:9px;border-radius:50%}
+
+  .stub{padding:var(--s8) var(--s5);text-align:center;color:var(--ink-3)}
+  .stub .big{font-family:"Sora";font-size:22px;font-weight:800;color:var(--ink);margin-bottom:8px}
+
+  /* page tools */
+  .filters{display:flex;gap:var(--s2);flex-wrap:wrap;margin-bottom:var(--s5)}
+  .chip{font-size:13px;font-weight:600;padding:8px 16px;border-radius:var(--r-pill);background:var(--glass-2);border:1px solid var(--glass-bd);color:var(--ink-2);cursor:pointer;transition:.2s;font-family:inherit}
+  .chip:hover{background:var(--glass)}
+  .chip:active{transform:scale(.97)}
+  .chip.active{background:var(--grad);color:#fff;border-color:transparent}
+  .chip:focus-visible{outline:3px solid var(--b2);outline-offset:2px}
+  .topbar .btn{margin-left:auto}
+
+  /* records */
+  .rec-card{display:block;padding:var(--s4) var(--s5);transition:transform .2s,box-shadow .2s}
+  .rec-card:hover{transform:translateY(-3px);box-shadow:var(--shadow)}
+  .rec-top{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+  .rec-type{font-size:11px;font-weight:700;padding:3px 10px;border-radius:var(--r-pill)}
+  .type-diary{color:var(--b1);background:rgba(37,99,235,.1)}
+  .type-work{color:var(--b3);background:rgba(20,184,166,.12)}
+  .type-note{color:var(--b2);background:rgba(6,182,212,.12)}
+  .rec-date{font-size:12px;color:var(--ink-2);margin-left:auto;font-weight:600}
+  .rec-title{font-size:16px;font-weight:700;margin-bottom:4px}
+  .rec-snip{font-size:14px;color:var(--ink-2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+  .rec-tags{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+  .rec-tags span{font-size:11px;color:var(--ink-2);background:rgba(15,23,42,.05);padding:2px 9px;border-radius:var(--r-pill)}
+  .glass .rec-card+.rec-card{border-top:1px solid var(--glass-line)}
+
+  /* calendar */
+  .cal-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s4)}
+  .cal-nav{display:flex;align-items:center;gap:12px}
+  .cal-nav button{width:36px;height:36px;border-radius:50%;border:1px solid var(--glass-bd);background:var(--glass-2);cursor:pointer;display:grid;place-items:center;color:var(--ink-2);font-size:18px;transition:.2s}
+  .cal-nav button:hover{background:var(--glass)}
+  .cal-nav button:active{transform:scale(.92)}
+  .cal-nav button:focus-visible{outline:3px solid var(--b2);outline-offset:2px}
+  .cal-nav b{font-family:"Sora";font-size:16px}
+  .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px}
+  .cal-dow{font-size:12px;font-weight:600;color:var(--ink-2);text-align:center;padding-bottom:2px}
+  .cal-day{aspect-ratio:1/1;border-radius:var(--r-sm);background:var(--glass-2);border:1px solid var(--glass-bd);padding:8px;display:flex;flex-direction:column;transition:.2s;cursor:pointer}
+  .cal-day:hover{background:var(--glass)}
+  .cal-day.empty{background:transparent;border:none;cursor:default}
+  .cal-day .d{font-size:13px;font-weight:600;color:var(--ink)}
+  .cal-day .l{font-size:10px;color:var(--ink-2)}
+  .cal-day.on .l{color:#fff}
+  .cal-day.on{background:var(--grad);border-color:transparent}
+  .cal-day.on .d,.cal-day.on .l{color:#fff}
+  .cal-day .row-ev{display:flex;gap:3px;margin-top:auto}
+  .cal-day .ev{width:6px;height:6px;border-radius:50%}
+  .cal-foot{display:flex;gap:18px;margin-top:var(--s5);flex-wrap:wrap;font-size:13px;color:var(--ink-2)}
+  .cal-foot span{display:flex;align-items:center;gap:6px}
+  .cal-foot i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* matrix */
+  .matrix{display:grid;grid-template-columns:1fr 1fr;gap:var(--s5)}
+  .quad{padding:var(--s5);min-height:190px}
+  .quad h3{font-size:16px;font-weight:700;margin-bottom:var(--s3);display:flex;align-items:center;gap:8px}
+  .quad .bar{width:4px;height:18px;border-radius:4px}
+  .q1 .bar{background:var(--danger)} .q1 h3{color:var(--danger)}
+  .q2 .bar{background:var(--b1)} .q2 h3{color:var(--b1)}
+  .q3 .bar{background:var(--warn)} .q3 h3{color:var(--warn)}
+  .q4 .bar{background:var(--ink-3)} .q4 h3{color:var(--ink-2)}
+  .q-item{font-size:14px;padding:10px 12px;border-radius:var(--r-sm);background:var(--glass-2);margin-bottom:8px;display:flex;align-items:center;gap:10px}
+  .q-item .dot{width:8px;height:8px;border-radius:50%;flex:none}
+
+  /* goals */
+  .goals{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--s5)}
+  .goal{padding:var(--s5)}
+  .goal-top{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+  .goal-top h3{font-size:17px;font-weight:700}
+  .goal .pct{font-family:"Sora";font-weight:800;font-size:22px;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .progress{height:10px;border-radius:999px;background:rgba(15,23,42,.08);overflow:hidden}
+  .progress>span{display:block;height:100%;border-radius:999px;background:var(--grad)}
+  .goal .meta{font-size:12px;color:var(--ink-2);margin-top:10px}
+
+  /* focus */
+  .focus-wrap{display:grid;place-items:center;padding:var(--s6) 0}
+  .timer{width:248px;height:248px;border-radius:50%;display:grid;place-items:center;position:relative;background:var(--glass);border:1px solid var(--glass-bd);box-shadow:var(--shadow)}
+  .timer .ring{position:absolute;inset:16px;border-radius:50%;border:7px solid rgba(6,182,212,.16)}
+  .timer .time{font-family:"Sora";font-size:54px;font-weight:800;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+  .focus-ctrl{display:flex;gap:var(--s3);margin-top:var(--s5)}
+  .focus-list{margin-top:var(--s6)}
+  .seg-row{display:flex;gap:10px;align-items:center}
+  .seg-row .seg-ic{width:32px;height:32px;border-radius:10px;background:var(--glass-2);border:1px solid var(--glass-bd);display:grid;place-items:center;color:var(--b1)}
+
+  /* stats */
+  .stat2{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--s5);margin-bottom:var(--s6)}
+  .bars{display:flex;align-items:flex-end;gap:var(--s4);padding:var(--s5) var(--s5) var(--s3)}
+  .bar-col{flex:1;display:flex;flex-direction:column;align-items:center;gap:8px;height:100%}
+  .bar-col .bv{width:100%;border-radius:10px 10px 0 0;background:var(--grad);min-height:8px}
+  .bar-col .bl{font-size:12px;color:var(--ink-2);font-weight:600}
+  .seg{display:flex;height:16px;border-radius:999px;overflow:hidden;margin-top:var(--s3)}
+  .seg>span{height:100%}
+  .legend{display:flex;gap:16px;flex-wrap:wrap;font-size:13px;color:var(--ink-2);padding:0 var(--s5) var(--s5)}
+  .legend span{display:flex;align-items:center;gap:6px}
+  .legend i{width:9px;height:9px;border-radius:50%;display:inline-block}
+
+  /* editor modal */
+  .mask{position:fixed;inset:0;background:rgba(15,23,42,.28);backdrop-filter:blur(4px);display:none;place-items:center;z-index:100;padding:var(--s5)}
+  .mask.show{display:grid}
+  .editor{width:min(720px,94vw);max-height:90vh;overflow-y:auto;padding:var(--s6);position:relative}
+  .editor-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:var(--s4)}
+  .editor-head .left{display:flex;align-items:center;gap:10px}
+  .x-btn{width:38px;height:38px;border-radius:50%;border:1px solid var(--glass-bd);background:var(--glass-2);cursor:pointer;display:grid;place-items:center;color:var(--ink-2);transition:.2s}
+  .x-btn:hover{background:var(--glass);color:var(--danger)}
+  .x-btn:active{transform:scale(.92)}
+  .x-btn:focus-visible{outline:3px solid var(--b2);outline-offset:2px}
+  .doc{border:1px solid var(--glass-bd);border-radius:var(--r-sm);background:var(--glass-strong);padding:var(--s4);margin-top:var(--s3)}
+  .doc-title{width:100%;border:none;background:transparent;font-family:"Sora";font-size:22px;font-weight:700;color:var(--ink);outline:none;margin-bottom:var(--s3)}
+  .doc-title::placeholder{color:var(--ink-3)}
+  .doc-body{outline:none;font-size:15px;line-height:1.7;color:var(--ink);min-height:170px}
+  .doc-body:empty:before{content:attr(data-ph);color:var(--ink-3)}
+  .attr{display:flex;gap:var(--s3);flex-wrap:wrap;margin-top:var(--s4);padding-top:var(--s4);border-top:1px solid var(--glass-line)}
+  .attr .field{flex:1;min-width:130px;margin:0}
+
+  .mobile-nav{display:none}
+  /* mobile */
+  @media(max-width:820px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .stats{grid-template-columns:1fr}
+    .matrix,.goals,.stat2{grid-template-columns:1fr}
+    .main{padding:var(--s4);padding-bottom:84px}
+    .topbar h2{font-size:22px}
+    .mobile-nav{display:flex;position:fixed;bottom:0;left:0;right:0;z-index:60;
+      background:var(--glass);border-top:1px solid var(--glass-bd);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);
+      padding:8px 4px;justify-content:space-around}
+    .mn-item{display:flex;flex-direction:column;align-items:center;gap:3px;flex:1;background:none;border:none;cursor:pointer;
+      color:var(--ink-2);font-size:11px;font-family:inherit;padding:6px 0;border-radius:12px;transition:color .2s}
+    .mn-item svg{width:22px;height:22px}
+    .mn-item.active{color:var(--b1);font-weight:600}
+    .mn-item:focus-visible{outline:3px solid var(--b2);outline-offset:2px}
+  }
+  @media(max-width:820px){
+    .shell{grid-template-columns:1fr}
+    .sidebar{display:none}
+    .stats{grid-template-columns:1fr}
+    .main{padding:var(--s4)}
+    .topbar h2{font-size:22px}
+  }
+  @media (prefers-reduced-motion:reduce){
+    html{scroll-behavior:auto}
+    .blob,.b1,.b2,.b3{animation:none}
+    *{transition:none!important}
+  }
+</style>
+</head>
+<body>
+  <svg width="0" height="0" style="position:absolute" aria-hidden="true">
+    <symbol id="ic-brand" viewBox="0 0 24 24"><path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z"/></symbol>
+    <symbol id="ic-todo" viewBox="0 0 24 24"><path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></symbol>
+    <symbol id="ic-matrix" viewBox="0 0 24 24"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></symbol>
+    <symbol id="ic-doc" viewBox="0 0 24 24"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></symbol>
+    <symbol id="ic-cal" viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></symbol>
+    <symbol id="ic-chart" viewBox="0 0 24 24"><line x1="4" y1="20" x2="4" y2="10"/><line x1="10" y1="20" x2="10" y2="4"/><line x1="16" y1="20" x2="16" y2="13"/><line x1="22" y1="20" x2="2" y2="20"/></symbol>
+    <symbol id="ic-timer" viewBox="0 0 24 24"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2 2"/><path d="M9 2h6"/></symbol>
+    <symbol id="ic-goal" viewBox="0 0 24 24"><path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" y1="22" x2="4" y2="15"/></symbol>
+    <symbol id="ic-logout" viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></symbol>
+    <symbol id="ic-close" viewBox="0 0 24 24"><line x1="6" y1="6" x2="18" y2="18"/><line x1="18" y1="6" x2="6" y2="18"/></symbol>
+  </svg>
+
+  <!-- ===== LOGIN ===== -->
+  <div id="login">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+    <div class="glass login-card">
+      <div class="login-brand"><svg class="brand-ic" width="26" height="26"><use href="#ic-brand"/></svg></div>
+      <h1>抵达 · Reach</h1>
+      <p class="sub">清单与目标 · 个人成长操作系统</p>
+      <div class="field">
+        <label for="u">账号</label>
+        <input id="u" type="text" placeholder="用户名 / 邮箱" value="demo" />
+      </div>
+      <div class="field">
+        <label for="p">密码</label>
+        <input id="p" type="password" placeholder="输入密码" value="••••••" />
+      </div>
+      <button class="btn btn-primary" onclick="enterApp()">登录 →</button>
+      <p class="login-note">无需信用卡 · 数据本地优先 · 网页端即用</p>
+    </div>
+  </div>
+
+  <!-- ===== APP ===== -->
+  <div id="app">
+    <div class="blob b1"></div><div class="blob b2"></div><div class="blob b3"></div>
+    <div class="shell">
+      <!-- sidebar -->
+      <aside class="sidebar">
+        <div class="sb-brand">
+          <div class="sb-mark"><svg class="brand-ic"><use href="#ic-brand"/></svg></div>
+          <div><b>抵达 · Reach</b><small>清单与目标</small></div>
+        </div>
+        <nav class="sb-nav" id="nav">
+          <button class="nav-item active" data-view="dashboard"><svg class="ic"><use href="#ic-todo"/></svg> 今日待办 <span class="count">5</span></button>
+          <button class="nav-item" data-view="matrix"><svg class="ic"><use href="#ic-matrix"/></svg> 四象限</button>
+          <button class="nav-item" data-view="records"><svg class="ic"><use href="#ic-doc"/></svg> 记录</button>
+          <button class="nav-item" data-view="calendar"><svg class="ic"><use href="#ic-cal"/></svg> 日历</button>
+          <button class="nav-item" data-view="stats"><svg class="ic"><use href="#ic-chart"/></svg> 回顾 / 数据</button>
+          <div class="sb-group">维度分类</div>
+          <button class="nav-item" data-view="dashboard"><span class="dot" style="background:var(--b1)"></span> 工作 <span class="count">2</span></button>
+          <button class="nav-item" data-view="dashboard"><span class="dot" style="background:var(--b3)"></span> 阅读 <span class="count">1</span></button>
+          <button class="nav-item" data-view="dashboard"><span class="dot" style="background:var(--warn)"></span> 健康 <span class="count">1</span></button>
+        </nav>
+        <div class="sb-foot">
+          <button class="nav-item" data-view="focus"><svg class="ic"><use href="#ic-timer"/></svg> 专注 / 番茄钟</button>
+          <button class="nav-item" data-view="goals"><svg class="ic"><use href="#ic-goal"/></svg> 我的目标</button>
+          <div class="sb-user"><span>@demo</span><button onclick="logout()">退出</button></div>
+        </div>
+      </aside>
+
+      <!-- main -->
+      <main class="main">
+        <div id="view-dashboard">
+          <div class="topbar">
+            <h2>今日待办</h2>
+            <div class="date">8月5日 周二 <span class="tag">闰六月</span></div>
+          </div>
+          <div class="stats">
+            <div class="glass stat"><div class="t">今日待办</div><div class="n">5</div><div class="d">2 项已完成</div></div>
+            <div class="glass stat"><div class="t">进行中目标</div><div class="n">3</div><div class="d">本周 +1</div></div>
+            <div class="glass stat"><div class="t">临近截止</div><div class="n">2</div><div class="d">今日内到期</div></div>
+          </div>
+          <div class="glass panel">
+            <div class="panel-head"><h3>今天要做</h3><a href="#" class="link">查看全部 →</a></div>
+            <div class="todo done"><span class="check" role="button" tabindex="0" aria-label="标记完成"><svg><use href="#ic-todo"/></svg></span><span class="title">提交周报初稿</span><span class="prio high">重要</span><span class="time">14:30</span></div>
+            <div class="todo"><span class="check" role="button" tabindex="0" aria-label="标记完成"></span><span class="title">读《认知觉醒》第 3 章</span><span class="cdot" style="background:var(--b3)"></span><span class="prio normal">普通</span><span class="time">读书</span></div>
+            <div class="todo"><span class="check" role="button" tabindex="0" aria-label="标记完成"></span><span class="title">复盘今日三件事</span><span class="cdot" style="background:var(--b1)"></span><span class="prio normal">普通</span><span class="time">日记</span></div>
+            <div class="todo"><span class="check" role="button" tabindex="0" aria-label="标记完成"></span><span class="title">健身 30 分钟</span><span class="cdot" style="background:var(--warn)"></span><span class="prio normal">普通</span><span class="time">健康</span></div>
+            <div class="todo"><span class="check" role="button" tabindex="0" aria-label="标记完成"></span><span class="title">回复客户邮件</span><span class="prio high">重要</span><span class="time">16:00</span></div>
+          </div>
+        </div>
+
+        <!-- ===== 记录 ===== -->
+        <div id="view-records" style="display:none">
+          <div class="topbar"><h2>记录</h2><button class="btn btn-primary" onclick="openEditor()">+ 新建记录</button></div>
+          <div class="filters">
+            <button class="chip active">全部</button>
+            <button class="chip">日记</button>
+            <button class="chip">工作日志</button>
+            <button class="chip">读书笔记</button>
+          </div>
+          <div class="glass">
+            <div class="rec-card">
+              <div class="rec-top"><span class="rec-type type-diary">日记</span><span class="rec-date">8月5日 09:12</span></div>
+              <div class="rec-title">今天状态不错，早起跑步了</div>
+              <div class="rec-snip">早上六点起床去公园跑了五公里，整个人清醒很多。想到最近在做的项目，其实节奏比想象中稳……</div>
+              <div class="rec-tags"><span>#晨间</span><span>#运动</span></div>
+            </div>
+            <div class="rec-card">
+              <div class="rec-top"><span class="rec-type type-work">工作日志</span><span class="rec-date">8月4日 18:40</span></div>
+              <div class="rec-title">周报初稿完成，明天同步</div>
+              <div class="rec-snip">今天把周报的「成果 / 阻塞 / 计划」三块都填好了，阻塞项主要是接口联调，已建工单跟进。</div>
+              <div class="rec-tags"><span>#周报</span><span>#协作</span></div>
+            </div>
+            <div class="rec-card">
+              <div class="rec-top"><span class="rec-type type-note">读书笔记</span><span class="rec-date">8月3日 21:05</span></div>
+              <div class="rec-title">《认知觉醒》第 3 章 · 元认知</div>
+              <div class="rec-snip">「元认知」是对思考的思考。作者用开车类比：身体在开，脑子里另一个自己在看着路线。</div>
+              <div class="rec-tags"><span>#读书</span><span>#成长</span></div>
+            </div>
+            <div class="rec-card">
+              <div class="rec-top"><span class="rec-type type-diary">日记</span><span class="rec-date">8月2日 22:30</span></div>
+              <div class="rec-title">复盘今日三件事</div>
+              <div class="rec-snip">1）写完周报 2）读了半章书 3）陪家人散步。小事累积，今天算踏实的一天。</div>
+              <div class="rec-tags"><span>#复盘</span></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 日历 ===== -->
+        <div id="view-calendar" style="display:none">
+          <div class="topbar"><h2>日历</h2><div class="date">2026年8月 <span class="tag">闰六月</span></div></div>
+          <div class="glass" style="padding:var(--s5)">
+            <div class="cal-head">
+              <div class="cal-nav"><button aria-label="上月">‹</button><b>2026年8月</b><button aria-label="下月">›</button></div>
+              <div class="date">今日 8月5日 周二</div>
+            </div>
+            <div class="cal-grid">
+              <div class="cal-dow">一</div><div class="cal-dow">二</div><div class="cal-dow">三</div><div class="cal-dow">四</div><div class="cal-dow">五</div><div class="cal-dow">六</div><div class="cal-dow">日</div>
+              <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div>
+              <div class="cal-day"><span class="d">1</span><span class="l">十八</span></div>
+              <div class="cal-day"><span class="d">2</span></div>
+              <div class="cal-day"><span class="d">3</span><span class="l">二十</span><div class="row-ev"><i class="ev" style="background:var(--b1)"></i></div></div>
+              <div class="cal-day"><span class="d">4</span></div>
+              <div class="cal-day on"><span class="d">5</span><span class="l">廿二</span><div class="row-ev"><i class="ev" style="background:var(--b1)"></i><i class="ev" style="background:var(--b3)"></i></div></div>
+              <div class="cal-day"><span class="d">6</span></div>
+              <div class="cal-day"><span class="d">7</span><span class="l">立秋</span></div>
+              <div class="cal-day"><span class="d">8</span></div>
+              <div class="cal-day"><span class="d">9</span></div>
+              <div class="cal-day"><span class="d">10</span><span class="l">廿七</span></div>
+              <div class="cal-day"><span class="d">11</span></div>
+              <div class="cal-day"><span class="d">12</span><div class="row-ev"><i class="ev" style="background:var(--b3)"></i></div></div>
+              <div class="cal-day"><span class="d">13</span></div>
+              <div class="cal-day"><span class="d">14</span></div>
+              <div class="cal-day"><span class="d">15</span><span class="l">初三</span></div>
+              <div class="cal-day"><span class="d">16</span></div>
+              <div class="cal-day"><span class="d">17</span></div>
+              <div class="cal-day"><span class="d">18</span><div class="row-ev"><i class="ev" style="background:var(--warn)"></i></div></div>
+              <div class="cal-day"><span class="d">19</span></div>
+              <div class="cal-day"><span class="d">20</span></div>
+              <div class="cal-day"><span class="d">21</span></div>
+              <div class="cal-day"><span class="d">22</span></div>
+              <div class="cal-day"><span class="d">23</span><span class="l">初十</span></div>
+              <div class="cal-day"><span class="d">24</span></div>
+              <div class="cal-day"><span class="d">25</span><div class="row-ev"><i class="ev" style="background:var(--b2)"></i></div></div>
+              <div class="cal-day"><span class="d">26</span></div>
+              <div class="cal-day"><span class="d">27</span></div>
+              <div class="cal-day"><span class="d">28</span><div class="row-ev"><i class="ev" style="background:var(--b1)"></i></div></div>
+              <div class="cal-day"><span class="d">29</span></div>
+              <div class="cal-day"><span class="d">30</span></div>
+              <div class="cal-day"><span class="d">31</span></div>
+              <div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div><div class="cal-day empty"></div>
+            </div>
+            <div class="cal-foot">
+              <span><i style="background:var(--b1)"></i> 记录</span>
+              <span><i style="background:var(--b3)"></i> 待办</span>
+              <span><i style="background:var(--warn)"></i> 目标</span>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 四象限 ===== -->
+        <div id="view-matrix" style="display:none">
+          <div class="topbar"><h2>四象限</h2><div class="date">按优先级安排今天</div></div>
+          <div class="matrix">
+            <div class="glass quad q1"><h3><span class="bar"></span>重要且紧急</h3>
+              <div class="q-item"><span class="dot" style="background:var(--danger)"></span>提交周报初稿 <span style="margin-left:auto;color:var(--ink-2);font-size:12px">14:30</span></div>
+              <div class="q-item"><span class="dot" style="background:var(--danger)"></span>回复客户邮件 <span style="margin-left:auto;color:var(--ink-2);font-size:12px">16:00</span></div>
+            </div>
+            <div class="glass quad q2"><h3><span class="bar"></span>重要不紧急</h3>
+              <div class="q-item"><span class="dot" style="background:var(--b1)"></span>读《认知觉醒》第 3 章</div>
+              <div class="q-item"><span class="dot" style="background:var(--b1)"></span>健身 30 分钟</div>
+            </div>
+            <div class="glass quad q3"><h3><span class="bar"></span>紧急不重要</h3>
+              <div class="q-item"><span class="dot" style="background:var(--warn)"></span>临时会议</div>
+            </div>
+            <div class="glass quad q4"><h3><span class="bar"></span>不紧急不重要</h3>
+              <div class="q-item"><span class="dot" style="background:var(--ink-3)"></span>刷社交媒体</div>
+            </div>
+          </div>
+        </div>
+
+        <!-- ===== 目标 ===== -->
+        <div id="view-goals" style="display:none">
+          <div class="topbar"><h2>我的目标</h2><button class="btn btn-primary">+ 新建目标</button></div>
+          <div class="goals">
+            <div class="glass goal"><div class="goal-top"><h3>读完 12 本书</h3><span class="pct">58%</span></div><div class="progress"><span style="width:58%"></span></div><div class="meta">7 / 12 本 · 本月 +2</div></div>
+            <div class="glass goal"><div class="goal-top"><h3>每周运动 3 次</h3><span class="pct">33%</span></div><div class="progress"><span style="width:33%"></span></div><div class="meta">1 / 3 次 · 本周</div></div>
+            <div class="glass goal"><div class="goal-top"><h3>存下 3 万元</h3><span class="pct">71%</span></div><div class="progress"><span style="width:71%"></span></div><div class="meta">¥21,300 / ¥30,000</div></div>
+            <div class="glass goal"><div class="goal-top"><h3>学会 React</h3><span class="pct">45%</span></div><div class="progress"><span style="width:45%"></span></div><div class="meta">9 / 20 节</div></div>
+          </div>
+        </div>
+
+        <!-- ===== 专注 ===== -->
+        <div id="view-focus" style="display:none">
+          <div class="topbar"><h2>专注 / 番茄钟</h2></div>
+          <div class="focus-wrap">
+            <div class="timer"><div class="ring"></div><div class="time">25:00</div></div>
+            <div class="focus-ctrl">
+              <button class="btn btn-primary">开始专注</button>
+              <button class="btn btn-ghost">暂停</button>
+            </div>
+          </div>
+          <div class="glass focus-list">
+            <div class="panel-head"><h3>今日专注</h3><span class="link">查看记录</span></div>
+            <div class="todo"><span class="cdot" style="background:var(--b2)"></span><span class="title">写周报初稿</span><span class="time">25:00 · 已完成</span></div>
+            <div class="todo"><span class="cdot" style="background:var(--b3)"></span><span class="title">读书</span><span class="time">25:00 · 已完成</span></div>
+            <div class="todo"><span class="cdot" style="background:var(--warn)"></span><span class="title">健身</span><span class="time">进行中…</span></div>
+          </div>
+        </div>
+
+        <!-- ===== 回顾 / 数据 ===== -->
+        <div id="view-stats" style="display:none">
+          <div class="topbar"><h2>回顾 / 数据</h2><div class="date">近 7 天</div></div>
+          <div class="stat2">
+            <div class="glass stat"><div class="t">完成任务</div><div class="n">24</div><div class="d">较上周 +6</div></div>
+            <div class="glass stat"><div class="t">专注时长</div><div class="n">7.5</div><div class="d">小时 · 本周</div></div>
+            <div class="glass stat"><div class="t">连续记录</div><div class="n">12</div><div class="d">天</div></div>
+          </div>
+          <div class="glass">
+            <div class="panel-head"><h3>每周完成任务</h3></div>
+            <div class="bars">
+              <div class="bar-col"><div class="bv" style="height:64px"></div><div class="bl">一</div></div>
+              <div class="bar-col"><div class="bv" style="height:88px"></div><div class="bl">二</div></div>
+              <div class="bar-col"><div class="bv" style="height:120px"></div><div class="bl">三</div></div>
+              <div class="bar-col"><div class="bv" style="height:96px"></div><div class="bl">四</div></div>
+              <div class="bar-col"><div class="bv" style="height:140px"></div><div class="bl">五</div></div>
+              <div class="bar-col"><div class="bv" style="height:72px"></div><div class="bl">六</div></div>
+              <div class="bar-col"><div class="bv" style="height:52px"></div><div class="bl">日</div></div>
+            </div>
+          </div>
+          <div class="glass" style="margin-top:var(--s5);padding:var(--s5)">
+            <div class="panel-head"><h3>记录类型分布</h3></div>
+            <div class="seg"><span style="width:40%;background:var(--b1)"></span><span style="width:35%;background:var(--b3)"></span><span style="width:25%;background:var(--b2)"></span></div>
+            <div class="legend"><span><i style="background:var(--b1)"></i>日记 40%</span><span><i style="background:var(--b3)"></i>工作日志 35%</span><span><i style="background:var(--b2)"></i>读书笔记 25%</span></div>
+          </div>
+        </div>
+
+        <!-- ===== 记录编辑器弹窗 ===== -->
+        <div class="mask" id="editorMask" onclick="if(event.target===this)closeEditor()">
+          <div class="glass editor" role="dialog" aria-modal="true" aria-label="新建记录">
+            <div class="editor-head">
+              <div class="left"><span class="rec-type type-diary">日记</span><span style="font-weight:600;color:var(--ink-2)">新建记录</span></div>
+              <button class="x-btn" onclick="closeEditor()" aria-label="关闭"><svg class="ic"><use href="#ic-close"/></svg></button>
+            </div>
+            <div class="doc">
+              <input class="doc-title" placeholder="无标题文档" aria-label="标题" />
+              <div class="doc-body" contenteditable="true" data-ph="开始书写……支持加粗、列表、引用" aria-label="正文"></div>
+            </div>
+            <div class="attr">
+              <div class="field"><label>日期</label><input type="date" value="2026-08-05" /></div>
+              <div class="field"><label>时间</label><input type="time" value="09:12" /></div>
+              <div class="field"><label>标签</label><input placeholder="用逗号分隔" /></div>
+            </div>
+            <div style="display:flex;gap:12px;margin-top:var(--s5);justify-content:flex-end">
+              <button class="btn btn-ghost" onclick="closeEditor()">取消</button>
+              <button class="btn btn-primary">保存记录</button>
+            </div>
+          </div>
+        </div>
+      </main>
+    </div>
+    <nav class="mobile-nav" id="mnav" aria-label="底部导航">
+      <button class="mn-item active" data-view="dashboard"><svg class="ic"><use href="#ic-todo"/></svg>待办</button>
+      <button class="mn-item" data-view="records"><svg class="ic"><use href="#ic-doc"/></svg>记录</button>
+      <button class="mn-item" data-view="calendar"><svg class="ic"><use href="#ic-cal"/></svg>日历</button>
+      <button class="mn-item" data-view="goals"><svg class="ic"><use href="#ic-goal"/></svg>目标</button>
+      <button class="mn-item" data-view="focus"><svg class="ic"><use href="#ic-timer"/></svg>专注</button>
+    </nav>
+  </div>
+
+<script>
+  function enterApp(){ document.getElementById('login').style.display='none'; document.getElementById('app').style.display='block'; }
+  function logout(){ document.getElementById('app').style.display='none'; document.getElementById('login').style.display='grid'; }
+  function openEditor(){ document.getElementById('editorMask').classList.add('show'); }
+  function closeEditor(){ document.getElementById('editorMask').classList.remove('show'); }
+  document.querySelectorAll('.filters .chip').forEach(c=>{
+    c.addEventListener('click',()=>{
+      document.querySelectorAll('.filters .chip').forEach(x=>x.classList.remove('active'));
+      c.classList.add('active');
+    });
+  });
+  function refreshNav(){
+    document.querySelectorAll('.sidebar .nav-item').forEach(x=>{
+      x.setAttribute('aria-current', x.classList.contains('active') ? 'page' : 'false');
+    });
+  }
+  function switchView(v){
+    document.querySelectorAll('[id^="view-"]').forEach(el=>el.style.display='none');
+    const t=document.getElementById('view-'+v); if(t) t.style.display='block';
+    document.querySelectorAll('.sidebar .nav-item, .mobile-nav .mn-item').forEach(x=>{
+      x.classList.toggle('active', x.dataset.view===v);
+    });
+    refreshNav();
+  }
+  refreshNav();
+  document.querySelectorAll('.sidebar .nav-item').forEach(b=>{
+    b.addEventListener('click',()=>switchView(b.dataset.view));
+  });
+  document.querySelectorAll('.mobile-nav .mn-item').forEach(m=>{
+    m.addEventListener('click',()=>switchView(m.dataset.view));
+  });
+  document.querySelectorAll('.check').forEach(c=>{
+    const toggle=(e)=>{ if(e.type==='keydown' && e.key!=='Enter' && e.key!==' ') return; e.preventDefault(); c.closest('.todo').classList.toggle('done'); };
+    c.addEventListener('click',toggle);
+    c.addEventListener('keydown',toggle);
+  });
+</script>
+</body>
+</html>

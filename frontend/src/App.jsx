@@ -6,6 +6,8 @@ import Goals from './pages/Goals.jsx'
 import Matrix from './pages/Matrix.jsx'
 import Stats from './pages/Stats.jsx'
 import Focus from './pages/Focus.jsx'
+import Records from './pages/Records.jsx'
+import Calendar from './pages/Calendar.jsx'
 
 function Protected({ children }) {
   const { isAuth } = useAuth()
@@ -57,6 +59,22 @@ export default function App() {
         element={
           <Protected>
             <Focus />
+          </Protected>
+        }
+      />
+      <Route
+        path="/records"
+        element={
+          <Protected>
+            <Records />
+          </Protected>
+        }
+      />
+      <Route
+        path="/calendar"
+        element={
+          <Protected>
+            <Calendar />
           </Protected>
         }
       />

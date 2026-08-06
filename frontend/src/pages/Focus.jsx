@@ -1,8 +1,13 @@
 import { useState, useEffect, useRef } from 'react'
 import api from '../api.js'
-import Sidebar from './components/Sidebar.jsx'
+import Layout from './Layout.jsx'
+import { header, cardLg, field, btnPrim, gradText } from './ui.jsx'
 
-const PRESETS = [25, 45, 5]
+const PRESETS = [
+  { m: 25, label: '专注 25' },
+  { m: 45, label: '深度 45' },
+  { m: 5, label: '休息 5' },
+]
 
 export default function Focus() {
   const [minutes, setMinutes] = useState(25)
@@ -13,7 +18,6 @@ export default function Focus() {
   const [logged, setLogged] = useState(null)
   const [sessions, setSessions] = useState([])
   const [summary, setSummary] = useState(null)
-  const [selected, setSelected] = useState('all')
   const timerRef = useRef(null)
 
   const refresh = async () => {
@@ -84,34 +88,50 @@ export default function Focus() {
   const mm = String(Math.floor(remaining / 60)).padStart(2, '0')
   const ss = String(remaining % 60).padStart(2, '0')
 
-  return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar summary={summary} selected={selected} onSelect={setSelected} />
+  const totalSec = minutes * 60
+  const elapsed = totalSec - remaining
+  const deg = totalSec ? (elapsed / totalSec) * 360 : 0
 
-      <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200 px-6 py-4 z-10">
-          <h1 className="text-lg font-semibold text-slate-800">🍅 专注 / 番茄钟</h1>
-          <p className="text-xs text-slate-400">选个任务，进入心流，时间到自动记录</p>
+  return (
+    <Layout summary={summary} selected="focus" onSelect={() => {}}>
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <header className={header}>
+          <h1 className="text-lg font-bold text-[#0f172a] font-display">
+            专注 / 番茄钟
+          </h1>
+          <p className="text-xs text-[#475569]">
+            选个任务，进入心流，时间到自动记录
+          </p>
         </header>
 
-        <div className="p-6 max-w-2xl mx-auto space-y-6">
+        <div className="p-5 md:p-7 max-w-2xl mx-auto space-y-6">
           {/* 计时器 */}
-          <div className="bg-white rounded-2xl border border-slate-200 p-8 text-center">
-            <div className="text-6xl font-bold tabular-nums text-indigo-600">
-              {mm}:{ss}
+          <div className={`${cardLg} p-8 text-center`}>
+            <div
+              className="relative w-60 h-60 rounded-full grid place-items-center mx-auto"
+              style={{
+                background: `conic-gradient(#06b6d4 ${deg}deg, #e2e8f0 ${deg}deg)`,
+              }}
+            >
+              <div className="absolute inset-[18px] rounded-full bg-white shadow-[0_8px_24px_-12px_rgba(8,145,178,0.30)] grid place-items-center">
+                <div className={`text-5xl font-extrabold tabular-nums ${gradText}`}>
+                  {mm}:{ss}
+                </div>
+              </div>
             </div>
-            <div className="flex justify-center gap-2 mt-4">
-              {PRESETS.map((m) => (
+
+            <div className="flex justify-center gap-2 mt-6">
+              {PRESETS.map((p) => (
                 <button
-                  key={m}
-                  onClick={() => setPreset(m)}
-                  className={`px-3 py-1 rounded-full text-sm ${
-                    minutes === m
-                      ? 'bg-indigo-600 text-white'
-                      : 'bg-slate-100 text-slate-600 hover:bg-slate-200'
+                  key={p.m}
+                  onClick={() => setPreset(p.m)}
+                  className={`px-4 py-1.5 rounded-full text-sm font-semibold transition ${
+                    minutes === p.m
+                      ? 'text-white brand-gradient shadow-[0_8px_24px_-12px_rgba(8,145,178,0.30)]'
+                      : 'bg-white/60 text-[#475569] hover:bg-white/80'
                   }`}
                 >
-                  {m} 分
+                  {p.label}
                 </button>
               ))}
             </div>
@@ -119,21 +139,18 @@ export default function Focus() {
               {running ? (
                 <button
                   onClick={pause}
-                  className="px-6 py-2 rounded-lg bg-amber-500 hover:bg-amber-600 text-white text-sm font-medium"
+                  className="px-7 py-2.5 rounded-xl bg-[#f59e0b] hover:bg-[#d97706] text-white text-sm font-semibold transition"
                 >
                   暂停
                 </button>
               ) : (
-                <button
-                  onClick={start}
-                  className="px-6 py-2 rounded-lg bg-indigo-600 hover:bg-indigo-700 text-white text-sm font-medium"
-                >
+                <button onClick={start} className={btnPrim + ' px-7 py-2.5'}>
                   开始专注
                 </button>
               )}
               <button
                 onClick={reset}
-                className="px-4 py-2 rounded-lg text-sm text-slate-500 hover:bg-slate-100"
+                className="px-5 py-2.5 rounded-xl text-sm text-[#475569] hover:bg-white/60 transition"
               >
                 重置
               </button>
@@ -142,13 +159,13 @@ export default function Focus() {
 
           {/* 关联任务 */}
           <div>
-            <label className="block text-sm text-slate-600 mb-1">
+            <label className="block text-sm text-[#475569] mb-1">
               关联任务（可选）
             </label>
             <select
               value={taskId}
               onChange={(e) => setTaskId(e.target.value)}
-              className="w-full border border-slate-300 rounded-lg px-3 py-2 focus:border-indigo-500"
+              className={field}
             >
               <option value="">不关联（仅记录专注时长）</option>
               {tasks.map((t) => (
@@ -160,25 +177,27 @@ export default function Focus() {
           </div>
 
           {logged && (
-            <div className="text-sm text-emerald-600 text-center">
-              ✅ 已记录 {logged} 分钟专注
+            <div className="text-sm text-[#059669] text-center font-medium">
+              已记录 {logged} 分钟专注
             </div>
           )}
 
           {/* 最近专注 */}
           <div>
-            <h2 className="font-medium text-slate-700 mb-2">最近专注</h2>
+            <h2 className="font-bold text-[#475569] mb-2">最近专注</h2>
             {sessions.length === 0 ? (
-              <p className="text-sm text-slate-300">还没有专注记录</p>
+              <p className="text-sm text-[#cbd5e1]">还没有专注记录</p>
             ) : (
-              <div className="space-y-1">
+              <div className="space-y-1.5">
                 {sessions.slice(0, 8).map((s) => (
                   <div
                     key={s.id}
-                    className="flex items-center justify-between text-sm text-slate-600 bg-white rounded-lg border border-slate-200 px-3 py-2"
+                    className="flex items-center justify-between text-sm text-[#475569] bg-white/55 border border-white/75 rounded-xl px-3 py-2.5"
                   >
-                    <span>{s.minutes} 分钟</span>
-                    <span className="text-xs text-slate-400">
+                    <span className="font-semibold text-[#0f172a]">
+                      {s.minutes} 分钟
+                    </span>
+                    <span className="text-xs text-[#94a3b8]">
                       {new Date(s.started_at).toLocaleString()}
                     </span>
                   </div>
@@ -188,6 +207,6 @@ export default function Focus() {
           </div>
         </div>
       </main>
-    </div>
+    </Layout>
   )
 }

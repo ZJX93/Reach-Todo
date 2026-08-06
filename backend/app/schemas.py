@@ -88,6 +88,7 @@ class TaskCreate(BaseModel):
     importance: str = "normal"  # low | normal | high（重要度）
     recurrence: str = "none"  # none | daily | weekly | monthly
     due_date: Optional[date] = None
+    due_time: Optional[str] = None  # HH:MM，截止时间精确到分
 
 
 class TaskUpdate(BaseModel):
@@ -100,6 +101,7 @@ class TaskUpdate(BaseModel):
     recurrence: Optional[str] = None
     status: Optional[str] = None  # todo | done
     due_date: Optional[date] = None
+    due_time: Optional[str] = None
 
 
 class TaskOut(BaseModel):
@@ -116,6 +118,7 @@ class TaskOut(BaseModel):
     recurrence: str
     status: str
     due_date: Optional[date]
+    due_time: Optional[str] = None
     sort_order: int
     created_at: datetime
     completed_at: Optional[datetime]
@@ -159,3 +162,86 @@ class FocusSessionOut(BaseModel):
     task_id: Optional[int]
     minutes: int
     started_at: datetime
+
+
+# ---------------- 记录 (Record) ----------------
+class RecordCreate(BaseModel):
+    type: str = "diary"  # diary | worklog | note
+    title: Optional[str] = None
+    content: Optional[str] = None
+    mood: Optional[str] = None
+    tags: Optional[str] = None
+    book_title: Optional[str] = None
+    book_author: Optional[str] = None
+    project: Optional[str] = None
+    record_date: Optional[date] = None
+    record_time: Optional[str] = None  # HH:MM，精确到分
+    template_id: Optional[int] = None  # 套用模板时用于预填
+
+
+class RecordUpdate(BaseModel):
+    type: Optional[str] = None
+    title: Optional[str] = None
+    content: Optional[str] = None
+    mood: Optional[str] = None
+    tags: Optional[str] = None
+    book_title: Optional[str] = None
+    book_author: Optional[str] = None
+    project: Optional[str] = None
+    record_date: Optional[date] = None
+    record_time: Optional[str] = None
+
+
+class RecordOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: int
+    type: str
+    title: str
+    content: Optional[str]
+    mood: Optional[str]
+    tags: Optional[str]
+    book_title: Optional[str]
+    book_author: Optional[str]
+    project: Optional[str]
+    record_date: date
+    record_time: Optional[str]
+    created_at: datetime
+    updated_at: datetime
+
+
+class CalendarDay(BaseModel):
+    date: str
+    total: int = 0
+    diary: int = 0
+    worklog: int = 0
+    note: int = 0
+    tasks: int = 0  # 当日到期任务数
+
+
+# ---------------- 模板 (Template) ----------------
+class TemplateCreate(BaseModel):
+    type: str = "diary"  # diary | worklog | note | all
+    name: str
+    icon: str = "📄"
+    content: Optional[str] = None
+
+
+class TemplateUpdate(BaseModel):
+    type: Optional[str] = None
+    name: Optional[str] = None
+    icon: Optional[str] = None
+    content: Optional[str] = None
+
+
+class TemplateOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    user_id: Optional[int]
+    type: str
+    name: str
+    icon: str
+    content: Optional[str]
+    is_preset: bool

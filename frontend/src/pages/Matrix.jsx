@@ -1,19 +1,20 @@
 import { useState, useEffect, useCallback } from 'react'
 import api from '../api.js'
-import Sidebar from './components/Sidebar.jsx'
+import Layout from './Layout.jsx'
 import TaskCard from './components/TaskCard.jsx'
+import { header, card } from './ui.jsx'
 
+// 象限强调色：用品牌语义色替代旧紫红，保留「紧急×重要」含义
 const ACCENT = {
-  q1: 'border-t-red-400',
-  q2: 'border-t-indigo-400',
-  q3: 'border-t-amber-400',
-  q4: 'border-t-slate-300',
+  q1: 'border-t-[#ef4444]',
+  q2: 'border-t-[#2563eb]',
+  q3: 'border-t-[#f59e0b]',
+  q4: 'border-t-[#94a3b8]',
 }
 
 export default function Matrix() {
   const [quadrants, setQuadrants] = useState([])
   const [summary, setSummary] = useState(null)
-  const [selected, setSelected] = useState('all')
   const [loading, setLoading] = useState(true)
 
   const load = useCallback(async () => {
@@ -43,33 +44,35 @@ export default function Matrix() {
   }
 
   return (
-    <div className="flex h-screen overflow-hidden">
-      <Sidebar summary={summary} selected={selected} onSelect={setSelected} />
-
-      <main className="flex-1 overflow-y-auto">
-        <header className="sticky top-0 bg-white/80 backdrop-blur border-b border-slate-200 px-6 py-4 z-10">
-          <h1 className="text-lg font-semibold text-slate-800">🎯 艾森豪威尔四象限</h1>
-          <p className="text-xs text-slate-400">按「重要 × 紧急」排优先级，先搞定 Q1</p>
+    <Layout summary={summary} selected="matrix" onSelect={() => {}}>
+      <main className="flex-1 overflow-y-auto pb-20 md:pb-0">
+        <header className={header}>
+          <h1 className="text-lg font-bold text-[#0f172a] font-display">
+            艾森豪威尔四象限
+          </h1>
+          <p className="text-xs text-[#475569]">
+            按「重要 × 紧急」排优先级，先搞定 Q1
+          </p>
         </header>
 
-        <div className="p-6">
+        <div className="p-5 md:p-7">
           {loading ? (
-            <p className="text-sm text-slate-400">加载中…</p>
+            <p className="text-sm text-[#94a3b8]">加载中…</p>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               {quadrants.map((q) => (
                 <section
                   key={q.key}
-                  className={`bg-white rounded-xl border border-slate-200 border-t-4 ${ACCENT[q.key]} p-4`}
+                  className={`${card} border-t-4 ${ACCENT[q.key]} p-4`}
                 >
                   <div className="flex items-baseline justify-between mb-3">
-                    <h2 className="font-semibold text-slate-700">{q.title}</h2>
-                    <span className="text-xs text-slate-400">{q.sub}</span>
+                    <h2 className="font-bold text-[#475569]">{q.title}</h2>
+                    <span className="text-xs text-[#94a3b8]">{q.sub}</span>
                   </div>
                   {q.tasks.length === 0 ? (
-                    <p className="text-sm text-slate-300">暂无任务</p>
+                    <p className="text-sm text-[#cbd5e1]">暂无任务</p>
                   ) : (
-                    <div className="space-y-2">
+                    <div className="space-y-2.5">
                       {q.tasks.map((t) => (
                         <TaskCard
                           key={t.id}
@@ -86,6 +89,6 @@ export default function Matrix() {
           )}
         </div>
       </main>
-    </div>
+    </Layout>
   )
 }

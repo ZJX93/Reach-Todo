@@ -6,7 +6,7 @@ from fastapi.responses import FileResponse
 
 from .config import CORS_ORIGINS
 from .database import init_db
-from .routers import auth, categories, goals, tasks, stats, focus
+from .routers import auth, categories, goals, tasks, stats, focus, records, templates
 
 # backend/ 目录；发布版前端构建产物放在 backend/static
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -34,6 +34,8 @@ app.include_router(goals.router)
 app.include_router(tasks.router)
 app.include_router(stats.router)
 app.include_router(focus.router)
+app.include_router(records.router)
+app.include_router(templates.router)
 
 
 @app.get("/")

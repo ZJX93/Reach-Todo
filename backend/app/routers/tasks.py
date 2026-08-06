@@ -1,7 +1,7 @@
 from datetime import datetime, timezone, date, timedelta
 
 from fastapi import APIRouter, Depends, HTTPException, Query
-from sqlalchemy import select, func
+from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -112,9 +112,19 @@ async def summary(
             Task.user_id == current.id, Task.status == "done"
         )
     )
+    # 今日待办：未完成的、且未排期或到期日不晚于今天（含逾期）
+    today = date.today()
+    today_todo = await db.scalar(
+        select(func.count(Task.id)).where(
+            Task.user_id == current.id,
+            Task.status == "todo",
+            or_(Task.due_date.is_(None), Task.due_date <= today),
+        )
+    )
     return {
         "categories": categories,
         "total_todo": total_todo or 0,
+        "today_todo": today_todo or 0,
         "total_done": total_done or 0,
     }
 
@@ -170,6 +180,7 @@ async def update_task(
                         importance=t.importance,
                         recurrence=t.recurrence,
                         due_date=next_occurrence(t.due_date, t.recurrence),
+                        due_time=t.due_time,
                         sort_order=t.sort_order,
                     )
                     db.add(nxt)
