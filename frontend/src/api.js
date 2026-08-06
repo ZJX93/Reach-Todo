@@ -16,6 +16,10 @@ api.interceptors.response.use(
     if (err.response && err.response.status === 401) {
       localStorage.removeItem('token')
       localStorage.removeItem('user')
+      // token 失效：回到登录页（避免停留在原页面反复静默失败）
+      if (window.location.pathname !== '/login') {
+        window.location.href = '/login'
+      }
     }
     return Promise.reject(err)
   },
