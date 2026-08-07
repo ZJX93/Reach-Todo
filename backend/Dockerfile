@@ -10,7 +10,7 @@ WORKDIR /src/frontend
 
 # 仅复制依赖清单以最大化利用 Docker 层缓存
 COPY frontend/package.json frontend/package-lock.json* ./
-RUN npm ci || npm install
+RUN npm install
 
 # 复制前端源码并构建（产物输出到 /src/backend/static）
 COPY frontend/ ./
@@ -26,15 +26,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
     PIP_NO_CACHE_DIR=1
 
-# 优先使用精确锁文件（可复现构建），失败则回退到宽松声明
+# 后端依赖：优先默认 PyPI（GitHub runner 可达）；失败回退阿里云镜像（本地中国构建）。
+# 先剔除 lock/txt 里写死的阿里云 index，避免 GitHub 构建环境连不通导致镜像构建失败。
 COPY backend/requirements.lock ./requirements.lock
 COPY backend/requirements.txt ./requirements.txt
-RUN pip install --no-cache-dir -r requirements.lock \
-        -i https://mirrors.aliyun.com/pypi/simple/ \
-        --trusted-host mirrors.aliyun.com \
-    || pip install --no-cache-dir -r requirements.txt \
-        -i https://mirrors.aliyun.com/pypi/simple/ \
-        --trusted-host mirrors.aliyun.com
+RUN sed -i '/mirrors.aliyun.com/d' requirements.lock requirements.txt 2>/dev/null; \
+    pip install --no-cache-dir -r requirements.lock \
+        || pip install --no-cache-dir -i https://mirrors.aliyun.com/pypi/simple/ --trusted-host mirrors.aliyun.com -r requirements.lock \
+        || pip install --no-cache-dir -r requirements.txt
 
 # 后端应用代码
 COPY backend/app ./app
