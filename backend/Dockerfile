@@ -37,6 +37,8 @@ RUN sed -i '/mirrors.aliyun.com/d' requirements.lock requirements.txt 2>/dev/nul
 
 # 后端应用代码
 COPY backend/app ./app
+COPY backend/alembic ./alembic
+COPY backend/alembic.ini ./alembic.ini
 
 # 前端构建产物（由阶段 1 产出，对应 vite outDir ../backend/static）
 COPY --from=frontend-build /src/backend/static ./static
