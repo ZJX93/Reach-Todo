@@ -12,6 +12,22 @@ from ..sanitize import sanitize_html
 router = APIRouter(prefix="/api/records", tags=["records"])
 
 
+# 日期入参统一转为 date 对象：SQLite 容忍字符串，但 PostgreSQL（asyncpg）
+# 会因类型不匹配直接报 DataError，转换后双方言安全。
+#
+# 必须定义在模块级别：list_records 的查询参数名为 date，会在函数作用域内遮蔽
+# datetime.date。若把本函数嵌套在其内部，注解 `date | None` 与函数体里的
+# `date.fromisoformat` 都会解析到那个被遮蔽的参数（默认 None），
+# 导致每次请求都抛 TypeError: unsupported operand type(s) for |: 'NoneType'。
+def _parse_date(s: str | None) -> date | None:
+    if not s:
+        return None
+    try:
+        return date.fromisoformat(s)
+    except ValueError as exc:
+        raise HTTPException(status_code=400, detail="日期格式应为 YYYY-MM-DD") from exc
+
+
 @router.get("", response_model=list[RecordOut])
 async def list_records(
     type: str | None = None,
@@ -24,16 +40,6 @@ async def list_records(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
-    # 日期入参统一转为 date 对象：SQLite 容忍字符串，但 PostgreSQL（asyncpg）
-    # 会因类型不匹配直接报 DataError，转换后双方言安全。
-    def _parse_date(s: str | None) -> date | None:
-        if not s:
-            return None
-        try:
-            return date.fromisoformat(s)
-        except ValueError as exc:
-            raise HTTPException(status_code=400, detail="日期格式应为 YYYY-MM-DD") from exc
-
     qry = select(Record).where(Record.user_id == current.id)
     if type:
         qry = qry.where(Record.type == type)
@@ -192,3 +198,4 @@ async def delete_record(
         raise HTTPException(status_code=404, detail="记录不存在")
     await db.delete(r)
     await db.commit()
+
