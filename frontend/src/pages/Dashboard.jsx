@@ -16,6 +16,7 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
+  const [showHistory, setShowHistory] = useState(false)
 
   const loadAll = useCallback(
     async (catId) => {
@@ -78,16 +79,42 @@ export default function Dashboard() {
     t.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
-  // 「今日待办」：首页只展示 今天 / 逾期 / 未排期 的任务；
-  // 完成重复任务时生成的「下一次」带的是未来 due_date，会等到规定那天才出现。
   const today = new Date().toISOString().slice(0, 10)
-  const isForToday = (t) => !t.due_date || t.due_date <= today
+
+  // 「今日待办」：未完成，且属于 今天 / 未来 / 未排期 / 30 天内逾期的任务。
+  // 已完成任务不显示；逾期超过 30 天的收起在「更早逾期」区域。
+  const isForToday = (t) => {
+    if (t.status === 'done') return false
+    if (!t.due_date) return true
+    if (t.due_date >= today) return true
+    const due = new Date(t.due_date)
+    const daysOverdue = Math.floor((new Date(today) - due) / (1000 * 60 * 60 * 24))
+    return daysOverdue <= 30
+  }
+
+  // 更早逾期：逾期超过 30 天的未完成历史任务，默认折叠。
+  const isHistoryOverdue = (t) => {
+    if (t.status === 'done') return false
+    if (!t.due_date) return false
+    const due = new Date(t.due_date)
+    const daysOverdue = Math.floor((new Date(today) - due) / (1000 * 60 * 60 * 24))
+    return daysOverdue > 30
+  }
+
   const groups = categories.map((c) => ({
     ...c,
     items: visibleTasks.filter(
       (t) => t.category_id === c.id && (selected === 'all' ? isForToday(t) : true),
     ),
   }))
+
+  const historyGroups = categories.map((c) => ({
+    ...c,
+    items: visibleTasks.filter(
+      (t) => t.category_id === c.id && isHistoryOverdue(t),
+    ),
+  }))
+  const historyTotal = historyGroups.reduce((sum, g) => sum + g.items.length, 0)
 
   const currentName =
     selected === 'all'
@@ -130,7 +157,8 @@ export default function Dashboard() {
           {loading ? (
             <p className="text-sm text-[#94a3b8]">加载中…</p>
           ) : selected === 'all' ? (
-            groups.map((g) => (
+            <>
+            {groups.map((g) => (
               <section key={g.id}>
                 <div className="flex items-center gap-2 mb-3">
                   <span
@@ -160,7 +188,53 @@ export default function Dashboard() {
                   </div>
                 )}
               </section>
-            ))
+            ))}
+            {historyTotal > 0 && (
+              <section className="pt-2">
+                <button
+                  onClick={() => setShowHistory((s) => !s)}
+                  className="flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] transition"
+                >
+                  <span className="text-xs">
+                    {showHistory ? '▾' : '▸'}
+                  </span>
+                  <span>更早逾期任务</span>
+                  <span className="text-xs text-[#94a3b8]">({historyTotal})</span>
+                </button>
+                {showHistory && (
+                  <div className="mt-4 space-y-6">
+                    {historyGroups
+                      .filter((g) => g.items.length > 0)
+                      .map((g) => (
+                        <section key={g.id}>
+                          <div className="flex items-center gap-2 mb-3">
+                            <span
+                              className="w-3 h-3 rounded-full"
+                              style={{ backgroundColor: g.color }}
+                            ></span>
+                            <h2 className="font-bold text-[#475569]">{g.name}</h2>
+                            <span className="text-xs text-[#94a3b8]">
+                              待办 {g.items.length}
+                            </span>
+                          </div>
+                          <div className="space-y-2.5 pl-1">
+                            {g.items.map((t) => (
+                              <TaskCard
+                                key={t.id}
+                                task={t}
+                                category={g}
+                                onToggle={handleToggle}
+                                onDelete={handleDelete}
+                              />
+                            ))}
+                          </div>
+                        </section>
+                      ))}
+                  </div>
+                )}
+              </section>
+            )}
+          </>
           ) : (
             <div className="space-y-2.5">
               {visibleTasks.length === 0 ? (
