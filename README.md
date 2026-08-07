@@ -47,13 +47,14 @@
 
 ## 🚀 快速开始
 
-### 方式一：Docker + PostgreSQL（推荐本地开发）
+### 方式一：Docker + PostgreSQL（推荐生产 / 本地一键部署）
 
 ```bash
-# 首次会拉镜像 + 构建，稍等
+# 多阶段构建：前端在镜像内 vite build 并打进后端镜像，
+# 由后端单端口 8000 同源托管前端与 API（不再有独立 5173 服务）
 docker compose up -d --build
 
-# 前端：http://localhost:5173
+# 应用（前端 + 后端 API 同源托管）：http://localhost:8000
 # 后端 API 文档：http://localhost:8000/docs
 ```
 
@@ -177,8 +178,8 @@ CI 工作流 `.github/workflows/ci.yml` 在每次 push / PR 自动安装依赖�
 
 ## 📦 部署
 
-- **Docker**：`docker compose up -d --build`，PostgreSQL 数据持久化在卷中。
-- **发布版**：按「方式二」构建前端并启动单端口后端，适合轻量自托管 / 演示。
+- **Docker（推荐）**：`docker compose up -d --build` 一键完成多阶段构建——前端在镜像内 `vite build` 并打进后端镜像，由后端单端口 **8000** 同源托管前端与 API；PostgreSQL 数据持久化在 `pgdata` 卷中。生产部署务必通过环境变量注入强随机 `JWT_SECRET`（如 `JWT_SECRET=$(openssl rand -hex 32)`）。
+- **发布版（零外部依赖）**：按「方式二」在本地构建前端（`npm run build` 产物输出到 `backend/static`）并启动单端口后端，适合轻量自托管 / 演示。
 
 日历农历数据依赖第三方免费接口（apihz.cn），`frontend/src/pages/Calendar.jsx` 顶部 `APIHZ_ID` / `APIHZ_KEY` 默认使用公共测试账号，量大会限频，**生产请替换为自己的账号**（注册 https://www.apihz.cn）。
 

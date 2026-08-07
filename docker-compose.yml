@@ -1,53 +1,48 @@
 services:
   db:
     image: postgres:16-alpine
-    container_name: goalflow-db
+    container_name: reach-db
     restart: unless-stopped
     environment:
-      POSTGRES_DB: ${POSTGRES_DB:-goalflow}
-      POSTGRES_USER: ${POSTGRES_USER:-goalflow}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-goalflow123}
+      POSTGRES_DB: ${POSTGRES_DB:-reach}
+      POSTGRES_USER: ${POSTGRES_USER:-reach}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reach123}
     ports:
       - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-goalflow} -d ${POSTGRES_DB:-goalflow}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-reach} -d ${POSTGRES_DB:-reach}"]
       interval: 5s
       timeout: 5s
       retries: 10
 
   backend:
-    build: ./backend
-    container_name: goalflow-backend
+    build:
+      context: .
+      dockerfile: backend/Dockerfile
+    container_name: reach-backend
     restart: unless-stopped
     depends_on:
       db:
         condition: service_healthy
     environment:
-      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-goalflow}:${POSTGRES_PASSWORD:-goalflow123}@db:5432/${POSTGRES_DB:-goalflow}
+      # 默认 PostgreSQL（Docker 网络内通过服务名 db 访问）
+      DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-reach}:${POSTGRES_PASSWORD:-reach123}@db:5432/${POSTGRES_DB:-reach}
       # 未设置 JWT_SECRET 时后端自动生成并持久化随机密钥（.jwt_secret），
-      # 生产环境强烈建议显式注入一个强随机值。
+      # 生产环境强烈建议显式注入一个强随机值：JWT_SECRET=$(openssl rand -hex 32)
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      CORS_ORIGINS: http://localhost:5173,http://frontend:5173
-      # 万年历第三方账号（默认公共测试账号，建议申请自己的免费账号后覆盖）
+      # 前端由后端同源托管（单端口 8000），默认无需跨域；
+      # 仅在独立部署前端时才需要填写，例如 https://app.example.com
+      CORS_ORIGINS: ${CORS_ORIGINS:-}
+      # 万年历第三方账号（默认公共测试账号，量大限频，生产请替换为自有账号）
       APIHZ_ID: ${APIHZ_ID:-88888888}
       APIHZ_KEY: ${APIHZ_KEY:-88888888}
     ports:
       - "8000:8000"
     command: uvicorn app.main:app --host 0.0.0.0 --port 8000
-
-  frontend:
-    build: ./frontend
-    container_name: goalflow-frontend
-    restart: unless-stopped
-    depends_on:
-      - backend
-    ports:
-      - "5173:5173"
-    command: npm run dev -- --host 0.0.0.0 --port 5173
 
 volumes:
   pgdata:
