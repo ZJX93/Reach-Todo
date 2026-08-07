@@ -10,13 +10,17 @@ SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=
 @event.listens_for(engine.sync_engine, "connect")
 def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
     """SQLite 默认 foreign_keys=OFF，导致 ondelete="CASCADE" 在 DB 层不生效。
-    仅对 SQLite 生效；PostgreSQL 天然强制外键，无需处理。"""
-    try:
-        cursor = dbapi_connection.cursor()
-        cursor.execute("PRAGMA foreign_keys=ON")
-        cursor.close()
-    except Exception:  # noqa: BLE001 - 非 sqlite 驱动（asyncpg 无 cursor）直接忽略
-        pass
+    仅对 SQLite 生效；PostgreSQL 天然强制外键，无需处理。
+
+    注意：不能用 try/except 屏蔽异常——asyncpg 的同步游标会把
+    ``PRAGMA foreign_keys=ON`` 真的发往 PostgreSQL 服务端，触发语法错误并使
+    当前事务 abort，进而导致后续所有语句报 InFailedSQLTransactionError。
+    因此必须按方言显式跳过非 SQLite 连接。"""
+    if engine.dialect.name != "sqlite":
+        return
+    cursor = dbapi_connection.cursor()
+    cursor.execute("PRAGMA foreign_keys=ON")
+    cursor.close()
 
 
 class Base(DeclarativeBase):
