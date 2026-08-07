@@ -1,7 +1,7 @@
 # 抵达 · Reach · 清单分类 + 关联目标 + 农历日历
 
-[![CI](https://github.com/ZJX93/reach-todo/actions/workflows/ci.yml/badge.svg)](https://github.com/ZJX93/reach-todo/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/github/license/ZJX93/reach-todo)](./LICENSE)
+[![CI](https://github.com/ZJX93/Reach-Todo/actions/workflows/ci.yml/badge.svg)](https://github.com/ZJX93/Reach-Todo/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/github/license/ZJX93/Reach-Todo)](./LICENSE)
 ![Python](https://img.shields.io/badge/python-3.11+-blue)
 ![Node](https://img.shields.io/badge/node-18%2B-green)
 
