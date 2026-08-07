@@ -52,10 +52,20 @@ export default function Dashboard() {
   }
 
   const handleToggle = async (task) => {
-    await api.put(`/tasks/${task.id}`, {
-      status: task.status === 'done' ? 'todo' : 'done',
-    })
-    await loadAll()
+    const prev = task.status
+    const next = prev === 'done' ? 'todo' : 'done'
+    // 乐观更新：先改本地状态，后台静默同步（失败回滚）
+    setTasks((ts) => ts.map((t) => (t.id === task.id ? { ...t, status: next } : t)))
+    try {
+      await api.put(`/tasks/${task.id}`, { status: next })
+      // 轻量同步统计（不再全量重拉任务列表）
+      const s = await api.get('/tasks/summary')
+      setSummary(s.data)
+    } catch (e) {
+      setTasks((ts) =>
+        ts.map((t) => (t.id === task.id ? { ...t, status: prev } : t)),
+      )
+    }
   }
 
   const handleDelete = async (task) => {

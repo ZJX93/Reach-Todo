@@ -1,4 +1,5 @@
 import axios from 'axios'
+import { toast } from './toast.js'
 
 const api = axios.create({ baseURL: '/api' })
 
@@ -20,7 +21,28 @@ api.interceptors.response.use(
       if (window.location.pathname !== '/login') {
         window.location.href = '/login'
       }
+      return Promise.reject(err)
     }
+    // 全局错误提示：避免请求失败导致白屏 / unhandled rejection
+    const status = err.response?.status
+    let msg = '请求失败，请稍后重试'
+    if (err.code === 'ERR_NETWORK' || !err.response) {
+      msg = '网络异常，请检查连接'
+    } else if (status >= 500) {
+      msg = '服务器开小差了，请稍后再试'
+    } else if (status === 429) {
+      msg = '操作太频繁，请稍后再试'
+    } else if (status === 400 || status === 422) {
+      const d = err.response.data
+      const detail = d?.detail
+      msg =
+        (Array.isArray(detail) ? detail[0]?.msg : detail) ||
+        d?.msg ||
+        '提交内容有误'
+    } else if (typeof err.response?.data?.detail === 'string') {
+      msg = err.response.data.detail
+    }
+    toast(msg, 'error')
     return Promise.reject(err)
   },
 )
