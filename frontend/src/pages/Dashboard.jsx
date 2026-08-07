@@ -16,7 +16,7 @@ export default function Dashboard() {
   const [showForm, setShowForm] = useState(false)
   const [query, setQuery] = useState('')
   const [loading, setLoading] = useState(true)
-  const [showHistory, setShowHistory] = useState(false)
+  const [showOverdue, setShowOverdue] = useState(false)
 
   const loadAll = useCallback(
     async (catId) => {
@@ -81,24 +81,19 @@ export default function Dashboard() {
 
   const today = new Date().toISOString().slice(0, 10)
 
-  // 「今日待办」：未完成，且属于 今天 / 未来 / 未排期 / 30 天内逾期的任务。
-  // 已完成任务不显示；逾期超过 30 天的收起在「更早逾期」区域。
+  // 「今日待办」：未完成，且属于 今天 / 未来 / 未排期 的任务。
+  // 已完成任务不显示；逾期的任务统一收进「逾期任务」折叠区。
   const isForToday = (t) => {
     if (t.status === 'done') return false
     if (!t.due_date) return true
-    if (t.due_date >= today) return true
-    const due = new Date(t.due_date)
-    const daysOverdue = Math.floor((new Date(today) - due) / (1000 * 60 * 60 * 24))
-    return daysOverdue <= 30
+    return t.due_date >= today
   }
 
-  // 更早逾期：逾期超过 30 天的未完成历史任务，默认折叠。
-  const isHistoryOverdue = (t) => {
+  // 逾期任务：未完成且到期日早于今天的任务，默认折叠。
+  const isOverdue = (t) => {
     if (t.status === 'done') return false
     if (!t.due_date) return false
-    const due = new Date(t.due_date)
-    const daysOverdue = Math.floor((new Date(today) - due) / (1000 * 60 * 60 * 24))
-    return daysOverdue > 30
+    return t.due_date < today
   }
 
   const groups = categories.map((c) => ({
@@ -108,13 +103,13 @@ export default function Dashboard() {
     ),
   }))
 
-  const historyGroups = categories.map((c) => ({
+  const overdueGroups = categories.map((c) => ({
     ...c,
     items: visibleTasks.filter(
-      (t) => t.category_id === c.id && isHistoryOverdue(t),
+      (t) => t.category_id === c.id && isOverdue(t),
     ),
   }))
-  const historyTotal = historyGroups.reduce((sum, g) => sum + g.items.length, 0)
+  const overdueTotal = overdueGroups.reduce((sum, g) => sum + g.items.length, 0)
 
   const currentName =
     selected === 'all'
@@ -189,21 +184,21 @@ export default function Dashboard() {
                 )}
               </section>
             ))}
-            {historyTotal > 0 && (
+            {overdueTotal > 0 && (
               <section className="pt-2">
                 <button
-                  onClick={() => setShowHistory((s) => !s)}
+                  onClick={() => setShowOverdue((s) => !s)}
                   className="flex items-center gap-2 text-sm text-[#64748b] hover:text-[#0f172a] transition"
                 >
                   <span className="text-xs">
-                    {showHistory ? '▾' : '▸'}
+                    {showOverdue ? '▾' : '▸'}
                   </span>
-                  <span>更早逾期任务</span>
-                  <span className="text-xs text-[#94a3b8]">({historyTotal})</span>
+                  <span>逾期任务</span>
+                  <span className="text-xs text-[#94a3b8]">({overdueTotal})</span>
                 </button>
-                {showHistory && (
+                {showOverdue && (
                   <div className="mt-4 space-y-6">
-                    {historyGroups
+                    {overdueGroups
                       .filter((g) => g.items.length > 0)
                       .map((g) => (
                         <section key={g.id}>

@@ -115,13 +115,13 @@ async def summary(
             Task.user_id == current.id, Task.status == "done"
         )
     )
-    # 今日待办：未完成的、且未排期或到期日不晚于今天（含逾期）
+    # 今日待办：未完成的、且未排期或到期日为今天及以后（不含逾期）
     today = date.today()
     today_todo = await db.scalar(
         select(func.count(Task.id)).where(
             Task.user_id == current.id,
             Task.status == "todo",
-            or_(Task.due_date.is_(None), Task.due_date <= today),
+            or_(Task.due_date.is_(None), Task.due_date >= today),
         )
     )
     return {
