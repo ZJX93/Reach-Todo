@@ -36,3 +36,7 @@ env/
 
 # Vite 构建临时缓存（build 时生成的 vite.config 时间戳副本）
 frontend/vite.config.*.timestamp-*.mjs
+
+# 前端构建产物：vite 输出到 backend/static，由 Docker 多阶段构建在容器内生成，
+# 不属于源码，不应提交（避免哈希化资源在每次构建后产生大量 diff）。
+backend/static/

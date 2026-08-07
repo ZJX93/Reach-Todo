@@ -1,48 +1,13 @@
-import { createContext, useContext, useState } from 'react'
-import api from './api.js'
+import useAuthStore from './store/authStore.js'
 
-const AuthContext = createContext(null)
-
-export function AuthProvider({ children }) {
-  const [user, setUser] = useState(() => {
-    const u = localStorage.getItem('user')
-    return u ? JSON.parse(u) : null
-  })
-  const [token, setToken] = useState(() => localStorage.getItem('token'))
-
-  const _setSession = (token, user) => {
-    localStorage.setItem('token', token)
-    localStorage.setItem('user', JSON.stringify(user))
-    setToken(token)
-    setUser(user)
-  }
-
-  const login = async (username, password) => {
-    const { data } = await api.post('/auth/login', { username, password })
-    _setSession(data.access_token, data.user)
-  }
-
-  const register = async (username, password) => {
-    const { data } = await api.post('/auth/register', { username, password })
-    _setSession(data.access_token, data.user)
-  }
-
-  const logout = () => {
-    localStorage.removeItem('token')
-    localStorage.removeItem('user')
-    setToken(null)
-    setUser(null)
-  }
-
-  return (
-    <AuthContext.Provider
-      value={{ user, token, login, register, logout, isAuth: !!token }}
-    >
-      {children}
-    </AuthContext.Provider>
-  )
-}
-
+// 兼容旧 API：返回与历史 Context 一致的字段集合（user / token / login /
+// register / logout / isAuth），所有原有消费方无需改动。
 export function useAuth() {
-  return useContext(AuthContext)
+  const user = useAuthStore((s) => s.user)
+  const token = useAuthStore((s) => s.token)
+  const login = useAuthStore((s) => s.login)
+  const register = useAuthStore((s) => s.register)
+  const logout = useAuthStore((s) => s.logout)
+  const isAuth = useAuthStore((s) => s.isAuth)
+  return { user, token, login, register, logout, isAuth }
 }

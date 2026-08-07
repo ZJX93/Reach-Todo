@@ -21,6 +21,7 @@ from .routers import (
     templates,
     holidays,
     lunar,
+    export,
 )
 
 # backend/ 目录；发布版前端构建产物放在 backend/static
@@ -58,6 +59,7 @@ app.include_router(records.router)
 app.include_router(templates.router)
 app.include_router(holidays.router)
 app.include_router(lunar.router)
+app.include_router(export.router)
 
 
 @app.get("/health")

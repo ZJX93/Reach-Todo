@@ -1,0 +1,18 @@
+{
+  "name": "抵达 · Reach",
+  "short_name": "抵达 Reach",
+  "description": "清单与目标管理：让每一天都朝着抵达前进。",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "background_color": "#f8fafc",
+  "theme_color": "#06b6d4",
+  "icons": [
+    {
+      "src": "/icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any"
+    }
+  ]
+}

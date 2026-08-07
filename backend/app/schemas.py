@@ -92,6 +92,7 @@ class TaskCreate(BaseModel):
     title: str = Field(min_length=1, max_length=300)
     category_id: int = Field(ge=1)
     goal_id: Optional[int] = Field(default=None, ge=1)
+    parent_id: Optional[int] = Field(default=None, ge=1)
     note: Optional[str] = None
     priority: Priority = "normal"
     importance: Importance = "normal"
@@ -104,6 +105,7 @@ class TaskUpdate(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=300)
     category_id: Optional[int] = Field(default=None, ge=1)
     goal_id: Optional[int] = Field(default=None, ge=1)
+    parent_id: Optional[int] = Field(default=None, ge=1)
     note: Optional[str] = None
     priority: Optional[Priority] = None
     importance: Optional[Importance] = None
@@ -120,6 +122,7 @@ class TaskOut(BaseModel):
     user_id: int
     category_id: int
     goal_id: Optional[int]
+    parent_id: Optional[int] = None
     title: str
     note: Optional[str]
     priority: str

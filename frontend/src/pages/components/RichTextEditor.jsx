@@ -1,145 +1,102 @@
-import { useRef, useEffect } from 'react'
-import { field } from '../ui.jsx'
+import { useEffect } from 'react'
+import { useEditor, EditorContent } from '@tiptap/react'
+import StarterKit from '@tiptap/starter-kit'
+import { TextStyle } from '@tiptap/extension-text-style'
+import Color from '@tiptap/extension-color'
 
-const FONTS = [
-  { label: '字体', value: '' },
-  { label: '宋体', value: '"SimSun", serif' },
-  { label: '黑体', value: '"SimHei", sans-serif' },
-  { label: '楷体', value: '"KaiTi", serif' },
-  { label: '雅黑', value: '"Microsoft YaHei", sans-serif' },
-  { label: '衬线', value: 'Georgia, serif' },
-  { label: '等宽', value: '"JetBrains Mono", monospace' },
-]
-const SIZES = [
-  { label: '字号', value: '' },
-  { label: '小', value: '13' },
-  { label: '标准', value: '15' },
-  { label: '大', value: '18' },
-  { label: '特大', value: '24' },
-  { label: '超大', value: '32' },
-]
 const COLORS = ['#0f172a', '#2563eb', '#06b6d4', '#dc2626', '#059669', '#d97706', '#db2777']
 
 const tb =
   'min-w-8 h-8 px-2 rounded-lg border border-white/75 text-[#475569] hover:bg-white/60 transition text-sm flex items-center justify-center'
 
 export default function RichTextEditor({ value, onChange, placeholder }) {
-  const ref = useRef(null)
-  const last = useRef(null) // 上次应用到编辑器的 HTML，避免回环导致光标跳动
+  const editor = useEditor({
+    extensions: [StarterKit, TextStyle, Color],
+    content: value || '',
+    editorProps: {
+      attributes: {
+        class:
+          'rich-editor min-h-[60vh] max-h-[70vh] overflow-y-auto w-full px-4 py-3 text-sm leading-relaxed text-[#0f172a] focus:outline-none',
+      },
+    },
+    onUpdate: ({ editor }) => onChange(editor.getHTML()),
+  })
 
+  // 外部 value 变化（切换记录等）时同步到编辑器，避免光标回环
   useEffect(() => {
-    if (ref.current && value !== last.current) {
-      ref.current.innerHTML = value || ''
-      last.current = value
+    if (!editor) return
+    const current = editor.getHTML()
+    if (value !== current) {
+      editor.commands.setContent(value || '', { emitUpdate: false })
     }
-  }, [value])
+  }, [value, editor])
 
-  const emit = () => {
-    last.current = ref.current.innerHTML
-    onChange(ref.current.innerHTML)
-  }
+  if (!editor) return null
 
-  // 工具栏按钮：mousedown 阻止默认，保留编辑区选区
-  const noBlur = (e) => e.preventDefault()
-
-  const exec = (cmd, val) => {
-    ref.current.focus()
-    document.execCommand('styleWithCSS', false, true)
-    document.execCommand(cmd, false, val)
-    emit()
-  }
-
-  const setFont = (family) => {
-    if (!family) return
-    exec('fontName', family)
-  }
-
-  const setSize = (px) => {
-    if (!px) return
-    ref.current.focus()
-    document.execCommand('styleWithCSS', false, false)
-    document.execCommand('fontSize', false, '7')
-    // 将刚插入的 <font size="7"> 转为带 px 的 span，便于精确字号
-    ref.current.querySelectorAll('font[size="7"]').forEach((f) => {
-      const span = document.createElement('span')
-      span.style.fontSize = px + 'px'
-      span.innerHTML = f.innerHTML
-      f.replaceWith(span)
-    })
-    emit()
-  }
-
-  const setColor = (c) => exec('foreColor', c)
-
-  const onPaste = (e) => {
-    e.preventDefault()
-    const text = (e.clipboardData || window.clipboardData).getData('text/plain')
-    document.execCommand('insertText', false, text)
-  }
+  const btn = (active, onClick, children) => (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`${tb} ${active ? 'bg-[#06b6d4]/15 border-[#06b6d4] text-[#0891b2]' : ''}`}
+    >
+      {children}
+    </button>
+  )
 
   return (
-    <div>
+    <div className="relative">
       <div className="flex flex-wrap items-center gap-1.5 mb-2">
-        <button type="button" className={tb} onMouseDown={noBlur} onClick={() => exec('bold')}>
-          <b>B</b>
-        </button>
-        <button type="button" className={tb} onMouseDown={noBlur} onClick={() => exec('italic')}>
-          <i>I</i>
-        </button>
-        <button type="button" className={tb} onMouseDown={noBlur} onClick={() => exec('underline')}>
-          <u>U</u>
-        </button>
+        {btn(editor.isActive('bold'), () => editor.chain().focus().toggleBold().run(), <b>B</b>)}
+        {btn(editor.isActive('italic'), () => editor.chain().focus().toggleItalic().run(), <i>I</i>)}
+        {btn(editor.isActive('underline'), () => editor.chain().focus().toggleUnderline().run(), <u>U</u>)}
+        {btn(editor.isActive('strike'), () => editor.chain().focus().toggleStrike().run(), <s>S</s>)}
         <span className="w-px h-5 bg-white/75 mx-0.5" />
-        <select
-          className={tb}
-          defaultValue=""
-          onChange={(e) => {
-            setFont(e.target.value)
-            e.target.value = ''
-          }}
-        >
-          {FONTS.map((f) => (
-            <option key={f.label} value={f.value}>
-              {f.label}
-            </option>
-          ))}
-        </select>
-        <select
-          className={tb}
-          defaultValue=""
-          onChange={(e) => {
-            setSize(e.target.value)
-            e.target.value = ''
-          }}
-        >
-          {SIZES.map((s) => (
-            <option key={s.label} value={s.value}>
-              {s.label}
-            </option>
-          ))}
-        </select>
+        {btn(
+          editor.isActive('heading', { level: 1 }),
+          () => editor.chain().focus().toggleHeading({ level: 1 }).run(),
+          'H1',
+        )}
+        {btn(
+          editor.isActive('heading', { level: 2 }),
+          () => editor.chain().focus().toggleHeading({ level: 2 }).run(),
+          'H2',
+        )}
+        <span className="w-px h-5 bg-white/75 mx-0.5" />
+        {btn(editor.isActive('bulletList'), () => editor.chain().focus().toggleBulletList().run(), '• 列表')}
+        {btn(editor.isActive('orderedList'), () => editor.chain().focus().toggleOrderedList().run(), '1. 列表')}
+        {btn(editor.isActive('blockquote'), () => editor.chain().focus().toggleBlockquote().run(), '❝')}
         <span className="w-px h-5 bg-white/75 mx-0.5" />
         {COLORS.map((c) => (
           <button
             key={c}
             type="button"
-            onMouseDown={noBlur}
-            onClick={() => setColor(c)}
-            className="w-6 h-6 rounded-lg border border-white/75 shadow-sm"
+            onClick={() => editor.chain().focus().setColor(c).run()}
+            className={`w-6 h-6 rounded-lg border border-white/75 shadow-sm ${
+              editor.isActive('textStyle', { color: c }) ? 'ring-2 ring-[#06b6d4]' : ''
+            }`}
             style={{ backgroundColor: c }}
             title={c}
           />
         ))}
+        <button
+          type="button"
+          onClick={() => editor.chain().focus().unsetColor().run()}
+          className={tb}
+          title="清除颜色"
+        >
+          ⌀
+        </button>
       </div>
-      <div
-        ref={ref}
-        contentEditable
-        suppressContentEditableWarning
-        onInput={emit}
-        onPaste={onPaste}
-        data-ph={placeholder}
-        className={`rich-editor min-h-[70vh] overflow-y-auto w-full border border-white/75 rounded-xl px-4 py-3 text-sm leading-relaxed text-[#0f172a] focus:border-[#06b6d4] focus:ring-2 focus:ring-[#06b6d4]/20 transition bg-white/70 ${field}`}
-      />
+
+      {editor.isEmpty && placeholder && (
+        <div className="absolute left-4 top-[44px] text-sm text-[#94a3b8] pointer-events-none">
+          {placeholder}
+        </div>
+      )}
+
+      <div className="border border-white/75 rounded-xl bg-white/70 focus-within:border-[#06b6d4] focus-within:ring-2 focus-within:ring-[#06b6d4]/20 transition">
+        <EditorContent editor={editor} />
+      </div>
     </div>
   )
 }

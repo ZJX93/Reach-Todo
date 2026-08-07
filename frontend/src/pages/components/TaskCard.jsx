@@ -1,10 +1,33 @@
+import { useState } from 'react'
 import { Icon } from '../ui.jsx'
 
 const RECUR_LABEL = { daily: '每天', weekly: '每周', monthly: '每月' }
 
-export default function TaskCard({ task, onToggle, onDelete, category }) {
+export default function TaskCard({
+  task,
+  onToggle,
+  onDelete,
+  category,
+  subtasks = [],
+  onAddSubtask,
+  onToggleSub,
+  onDeleteSub,
+}) {
   const done = task.status === 'done'
   const catBg = category?.color ? category.color + '1a' : undefined
+  const [showSub, setShowSub] = useState(subtasks.length > 0)
+  const [subTitle, setSubTitle] = useState('')
+
+  const doneCount = subtasks.filter((s) => s.status === 'done').length
+
+  const submitSub = async (e) => {
+    e.preventDefault()
+    const title = subTitle.trim()
+    if (!title || !onAddSubtask) return
+    await onAddSubtask(task.id, title)
+    setSubTitle('')
+  }
+
   return (
     <div
       className={`group flex items-start gap-3.5 p-3.5 rounded-2xl border transition hover:shadow-[0_8px_24px_-12px_rgba(8,145,178,0.30)] hover:-translate-y-0.5 ${
@@ -16,9 +39,7 @@ export default function TaskCard({ task, onToggle, onDelete, category }) {
         onClick={() => onToggle(task)}
         aria-label={done ? '标记为未完成' : '标记为完成'}
         className={`mt-0.5 w-[22px] h-[22px] shrink-0 rounded-lg border-2 grid place-items-center text-white text-[13px] transition ${
-          done
-            ? 'brand-gradient border-transparent'
-            : 'border-[#94a3b8] hover:border-[#06b6d4]'
+          done ? 'brand-gradient border-transparent' : 'border-[#94a3b8] hover:border-[#06b6d4]'
         }`}
       >
         {done ? '✓' : ''}
@@ -73,6 +94,89 @@ export default function TaskCard({ task, onToggle, onDelete, category }) {
             </span>
           )}
         </div>
+
+        {/* 子任务区 */}
+        {(subtasks.length > 0 || showSub) && (
+          <div className="mt-3 pt-3 border-t border-white/60">
+            <div className="flex items-center justify-between mb-2">
+              <button
+                onClick={() => setShowSub((s) => !s)}
+                className="text-[12px] font-semibold text-[#475569] hover:text-[#0f172a] transition flex items-center gap-1"
+              >
+                <span className="text-[10px]">{showSub ? '▾' : '▸'}</span>
+                子任务
+                {subtasks.length > 0 && (
+                  <span className="text-[#94a3b8] font-normal">
+                    （{doneCount}/{subtasks.length}）
+                  </span>
+                )}
+              </button>
+            </div>
+
+            {showSub && (
+              <>
+                <ul className="space-y-1.5">
+                  {subtasks.map((s) => {
+                    const sDone = s.status === 'done'
+                    return (
+                      <li key={s.id} className="flex items-center gap-2 group/sub">
+                        <button
+                          onClick={() => onToggleSub && onToggleSub(s)}
+                          aria-label={sDone ? '标记为未完成' : '标记为完成'}
+                          className={`w-[16px] h-[16px] shrink-0 rounded border grid place-items-center text-white text-[10px] transition ${
+                            sDone
+                              ? 'brand-gradient border-transparent'
+                              : 'border-[#94a3b8] hover:border-[#06b6d4]'
+                          }`}
+                        >
+                          {sDone ? '✓' : ''}
+                        </button>
+                        <span
+                          className={`flex-1 text-[13px] ${
+                            sDone ? 'line-through text-[#94a3b8]' : 'text-[#334155]'
+                          }`}
+                        >
+                          {s.title}
+                        </span>
+                        <button
+                          onClick={() => onDeleteSub && onDeleteSub(s)}
+                          className="text-[#cbd5e1] hover:text-[#ef4444] text-xs opacity-0 group-hover/sub:opacity-100 transition"
+                          aria-label="删除子任务"
+                        >
+                          <Icon.close />
+                        </button>
+                      </li>
+                    )
+                  })}
+                </ul>
+
+                <form onSubmit={submitSub} className="mt-2 flex items-center gap-2">
+                  <input
+                    value={subTitle}
+                    onChange={(e) => setSubTitle(e.target.value)}
+                    placeholder="添加子任务…"
+                    className="flex-1 text-[13px] px-2.5 py-1.5 rounded-lg border border-white/70 bg-white/60 outline-none focus:border-[#06b6d4]"
+                  />
+                  <button
+                    type="submit"
+                    className="text-[12px] font-semibold text-white brand-gradient px-3 py-1.5 rounded-lg shrink-0"
+                  >
+                    添加
+                  </button>
+                </form>
+              </>
+            )}
+          </div>
+        )}
+
+        {subtasks.length === 0 && !showSub && (
+          <button
+            onClick={() => setShowSub(true)}
+            className="mt-2 text-[12px] text-[#94a3b8] hover:text-[#06b6d4] transition"
+          >
+            + 子任务
+          </button>
+        )}
       </div>
 
       <button

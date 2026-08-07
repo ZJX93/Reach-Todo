@@ -2,6 +2,7 @@ from datetime import datetime, timezone, date, timedelta
 import calendar
 
 from fastapi import APIRouter, Depends, HTTPException, Query
+from pydantic import BaseModel
 from sqlalchemy import select, func, or_
 from sqlalchemy.orm import selectinload
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -147,12 +148,55 @@ async def create_task(
             raise HTTPException(status_code=400, detail="目标不存在")
 
     data = payload.model_dump()
+    # 子任务：校验父任务归属，并将其归入父任务同维度
+    if data.get("parent_id") is not None:
+        p = await db.get(Task, data["parent_id"])
+        if not p or p.user_id != current.id:
+            raise HTTPException(status_code=400, detail="父任务不存在")
+        data["category_id"] = p.category_id
+
     data["user_id"] = current.id
     t = Task(**data)
     db.add(t)
     await db.commit()
     await db.refresh(t, attribute_names=["category", "goal"])
     return _to_out(t)
+
+
+class ReorderItem(BaseModel):
+    id: int
+    sort_order: int
+
+
+class ReorderPayload(BaseModel):
+    items: list[ReorderItem]
+
+
+@router.put("/reorder", status_code=200)
+async def reorder_tasks(
+    payload: ReorderPayload,
+    db: AsyncSession = Depends(get_db),
+    current: User = Depends(get_current_user),
+):
+    """批量更新任务排序（拖拽后调用）。仅接受属于当前用户且存在的任务。"""
+    ids = [it.id for it in payload.items]
+    if not ids:
+        return {"updated": 0}
+    tasks = (
+        await db.scalars(select(Task).where(Task.id.in_(ids), Task.user_id == current.id))
+    ).all()
+    by_id = {t.id: t for t in tasks}
+    updated = 0
+    for it in payload.items:
+        t = by_id.get(it.id)
+        if t is None:
+            continue
+        if t.sort_order != it.sort_order:
+            t.sort_order = it.sort_order
+            updated += 1
+    if updated:
+        await db.commit()
+    return {"updated": updated}
 
 
 @router.put("/{task_id}", response_model=TaskOut)

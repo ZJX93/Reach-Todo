@@ -154,28 +154,32 @@ async def _run_migrations():
 
     def _do(connection):
         tables = set(sa_inspect(connection).get_table_names())
-        if "users" in tables:
-            # 旧库（手写 migrate 时代已建全部表）：直接把版本戳记到 head，
-            # 跳过建表迁移。用原生 SQL 操作版本表，避免 alembic 内部 asyncio.run
-            # 与 stamp 模式下 step 类型不匹配的问题，且天然事件循环安全。
-            heads = script_dir.get_heads()
-            from sqlalchemy import text
+        from sqlalchemy import text
 
+        if "users" in tables:
+            # 既有数据库：
+            # 1) 确保 alembic_version 表存在；
+            # 2) 若版本表为空（手写 migrate 时代的旧库 / 从未戳记过），先把版本
+            #    戳记到 baseline 根，使后续 `upgrade head` 仅执行增量迁移
+            #    （如 parent_id），而不会针对已存在的表重跑 baseline 的
+            #    CREATE TABLE（否则会报 "table already exists"）。
             connection.execute(
                 text(
                     "CREATE TABLE IF NOT EXISTS alembic_version ("
                     "version_num VARCHAR(32) NOT NULL, PRIMARY KEY (version_num))"
                 )
             )
-            connection.execute(text("DELETE FROM alembic_version"))
-            for h in heads:
+            cnt = connection.execute(text("SELECT COUNT(*) FROM alembic_version")).scalar() or 0
+            if cnt == 0:
+                root = _find_root(script_dir)
                 connection.execute(
                     text("INSERT INTO alembic_version (version_num) VALUES (:v)"),
-                    {"v": h},
+                    {"v": root.revision},
                 )
-            return
 
-        # 新库：用 EnvironmentContext 升级到 head（等价于 `alembic upgrade head`）
+        # 新库与既有库统一：升级到 head。
+        # - 新库：从 baseline 起建全部表；
+        # - 既有库：仅执行尚未应用的增量迁移（已到 head 则为空操作）。
         def _fn(rev, context):
             return context.script._upgrade_revs("head", rev)
 
@@ -186,6 +190,14 @@ async def _run_migrations():
 
     async with engine.begin() as conn:
         await conn.run_sync(_do)
+
+
+def _find_root(script_dir):
+    """返回无 down_revision 的根迁移（即 baseline）。"""
+    for r in script_dir.walk_revisions():
+        if r.down_revision is None:
+            return r
+    raise RuntimeError("Alembic: 未找到根迁移（baseline）")
 
 
 async def init_db():

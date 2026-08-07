@@ -118,6 +118,17 @@ class Task(Base):
     category: Mapped["Category"] = relationship(back_populates="tasks")
     goal: Mapped[Optional["Goal"]] = relationship(back_populates="tasks")
 
+    # 子任务：自引用的父子关系（parent_id 为 NULL 表示顶层任务）
+    parent_id: Mapped[Optional[int]] = mapped_column(
+        ForeignKey("tasks.id", ondelete="CASCADE"), nullable=True, index=True
+    )
+    parent: Mapped[Optional["Task"]] = relationship(
+        "Task", remote_side=[id], back_populates="children"
+    )
+    children: Mapped[list["Task"]] = relationship(
+        "Task", back_populates="parent", cascade="all, delete-orphan"
+    )
+
 
 class FocusSession(Base):
     """番茄钟 / 专注记录"""
