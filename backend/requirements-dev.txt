@@ -1,0 +1,6 @@
+# 开发 / 测试依赖（CI 与本地开发使用）。
+# 生产运行时依赖见 requirements.txt（宽松声明）与 requirements.lock（精确锁定）。
+-r requirements.txt
+
+pytest>=8.0
+pytest-asyncio>=0.23

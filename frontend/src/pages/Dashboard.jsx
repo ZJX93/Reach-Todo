@@ -5,6 +5,7 @@ import Layout from './Layout.jsx'
 import TaskCard from './components/TaskCard.jsx'
 import TaskForm from './components/TaskForm.jsx'
 import { header, field, btnPrim, Icon } from './ui.jsx'
+import { todayStr } from '../utils/date.js'
 
 export default function Dashboard() {
   const { user } = useAuth()
@@ -43,7 +44,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (categories.length) loadAll(selected)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [selected])
 
   const handleSubmit = async (payload) => {
@@ -62,7 +62,7 @@ export default function Dashboard() {
       // 轻量同步统计（不再全量重拉任务列表）
       const s = await api.get('/tasks/summary')
       setSummary(s.data)
-    } catch (e) {
+    } catch {
       setTasks((ts) =>
         ts.map((t) => (t.id === task.id ? { ...t, status: prev } : t)),
       )
@@ -79,7 +79,7 @@ export default function Dashboard() {
     t.title.toLowerCase().includes(query.trim().toLowerCase()),
   )
 
-  const today = new Date().toISOString().slice(0, 10)
+  const today = todayStr()
 
   // 「今日待办」：未完成，且属于 今天 / 未来 / 未排期 的任务。
   // 已完成任务不显示；逾期的任务统一收进「逾期任务」折叠区。

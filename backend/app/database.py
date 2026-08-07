@@ -1,9 +1,22 @@
+from sqlalchemy import event
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker, AsyncSession
 from sqlalchemy.orm import DeclarativeBase
 from .config import DATABASE_URL
 
 engine = create_async_engine(DATABASE_URL, echo=False, future=True)
 SessionLocal = async_sessionmaker(engine, class_=AsyncSession, expire_on_commit=False)
+
+
+@event.listens_for(engine.sync_engine, "connect")
+def _enable_sqlite_foreign_keys(dbapi_connection, connection_record):
+    """SQLite 默认 foreign_keys=OFF，导致 ondelete="CASCADE" 在 DB 层不生效。
+    仅对 SQLite 生效；PostgreSQL 天然强制外键，无需处理。"""
+    try:
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA foreign_keys=ON")
+        cursor.close()
+    except Exception:  # noqa: BLE001 - 非 sqlite 驱动（asyncpg 无 cursor）直接忽略
+        pass
 
 
 class Base(DeclarativeBase):
@@ -115,45 +128,70 @@ async def seed_preset_templates():
         await session.commit()
 
 
-async def migrate():
-    """幂等迁移：为已存在的表补充新列（兼容发布版旧的 SQLite / PostgreSQL）。
-    仅新增列，不破坏已有数据；新建库由 create_all 直接建好。"""
-    from sqlalchemy import inspect as sa_inspect, text
+async def _run_migrations():
+    """Alembic 迁移（事件循环安全，可在 pytest-asyncio 等已运行 loop 中调用）：
 
-    # 需要补充的列（表名 -> [(列名, DDL)]）
-    patches = {
-        "tasks": [
-            ("importance", "VARCHAR(20) NOT NULL DEFAULT 'normal'"),
-            ("recurrence", "VARCHAR(20) NOT NULL DEFAULT 'none'"),
-            ("due_time", "VARCHAR(5)"),
-        ],
-        "records": [
-            ("record_time", "VARCHAR(5)"),
-        ],
-    }
+    - 全新库（无 users 表）：upgrade 到 head，建表并写入版本；
+    - 手写 migrate 时代的旧库（已有 users 表）：仅 stamp head，不重复建表。
+
+    不走 `alembic.command.upgrade/stamp`，因为它们内部会 `asyncio.run()`，
+    在已运行的事件循环里会抛 RuntimeError；这里改用 EnvironmentContext 在
+    `conn.run_sync` 提供的同步连接上直接执行，天然兼容当前 loop。
+    后续 schema 变更统一走 `alembic revision --autogenerate` + `alembic upgrade head`。"""
+    from pathlib import Path
+
+    from alembic import script as alembic_script
+    from alembic.config import Config
+    from alembic.runtime.environment import EnvironmentContext
+    from sqlalchemy import inspect as sa_inspect
+
+    backend_dir = Path(__file__).resolve().parent.parent
+    cfg = Config(str(backend_dir / "alembic.ini"))
+    cfg.set_main_option("script_location", str(backend_dir / "alembic"))
+    cfg.set_main_option("sqlalchemy.url", DATABASE_URL)
+    cfg.set_main_option("path_separator", "os")
+    script_dir = alembic_script.ScriptDirectory.from_config(cfg)
+
+    def _do(connection):
+        tables = set(sa_inspect(connection).get_table_names())
+        if "users" in tables:
+            # 旧库（手写 migrate 时代已建全部表）：直接把版本戳记到 head，
+            # 跳过建表迁移。用原生 SQL 操作版本表，避免 alembic 内部 asyncio.run
+            # 与 stamp 模式下 step 类型不匹配的问题，且天然事件循环安全。
+            heads = script_dir.get_heads()
+            from sqlalchemy import text
+
+            connection.execute(
+                text(
+                    "CREATE TABLE IF NOT EXISTS alembic_version ("
+                    "version_num VARCHAR(32) NOT NULL, PRIMARY KEY (version_num))"
+                )
+            )
+            connection.execute(text("DELETE FROM alembic_version"))
+            for h in heads:
+                connection.execute(
+                    text("INSERT INTO alembic_version (version_num) VALUES (:v)"),
+                    {"v": h},
+                )
+            return
+
+        # 新库：用 EnvironmentContext 升级到 head（等价于 `alembic upgrade head`）
+        def _fn(rev, context):
+            return context.script._upgrade_revs("head", rev)
+
+        ctx = EnvironmentContext(cfg, script_dir)
+        ctx.configure(connection=connection, fn=_fn, target_metadata=Base.metadata)
+        with ctx.begin_transaction():
+            ctx.run_migrations()
 
     async with engine.begin() as conn:
-
-        def _patch(sync_conn):
-            inspector = sa_inspect(sync_conn)
-            for table, cols in patches.items():
-                existing = {c["name"] for c in inspector.get_columns(table)}
-                for col, ddl in cols:
-                    if col not in existing:
-                        sync_conn.execute(
-                            text(f"ALTER TABLE {table} ADD COLUMN {col} {ddl}")
-                        )
-
-        await conn.run_sync(_patch)
+        await conn.run_sync(_do)
 
 
 async def init_db():
-    # 导入模型以确保注册到 Base.metadata
+    # 导入模型以确保注册到 Base.metadata（Alembic env.py 亦依赖）
     from . import models  # noqa: F401
 
-    async with engine.begin() as conn:
-        await conn.run_sync(Base.metadata.create_all)
-
-    await migrate()
+    await _run_migrations()
     await seed_demo_account()
     await seed_preset_templates()

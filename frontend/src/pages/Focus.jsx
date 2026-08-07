@@ -49,7 +49,6 @@ export default function Focus() {
       }, 1000)
     }
     return () => clearInterval(timerRef.current)
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [running])
 
   const start = () => {
@@ -80,7 +79,7 @@ export default function Focus() {
       })
       setLogged(mins)
       refresh()
-    } catch (e) {
+    } catch {
       // 忽略记录失败，不打断专注体验
     }
   }

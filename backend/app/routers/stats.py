@@ -1,7 +1,7 @@
-from datetime import datetime, timezone, date, timedelta
+from datetime import date, datetime, timedelta, timezone
 
 from fastapi import APIRouter, Depends
-from sqlalchemy import select, func
+from sqlalchemy import Date, cast, select, func
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import get_db
@@ -11,11 +11,6 @@ from ..deps import get_current_user
 router = APIRouter(prefix="/api/stats", tags=["stats"])
 
 
-def _naive(dt):
-    """SQLite 返回 naive、PostgreSQL 返回 aware，统一转 naive 以便比较。"""
-    return dt.replace(tzinfo=None) if dt and dt.tzinfo else dt
-
-
 @router.get("/summary")
 async def summary(
     db: AsyncSession = Depends(get_db),
@@ -23,33 +18,47 @@ async def summary(
 ):
     """周回顾 / 数据看板：本周完成、连续天数、专注时长、各维度与目标进展。
 
-    时区修复：completed_at / started_at 入库为 UTC aware，统一在 UTC 下计算，
-    避免与本地 naive 时间比较造成的「凌晨完成任务 streak 断签」问题。
+    全部用 SQL 聚合（GROUP BY / COUNT），不再把全表拉回内存计数；
+    时间统一在 UTC 下计算（入库即 UTC），避免本地时区比较造成 streak 断签。
     """
     now = datetime.now(timezone.utc)
-    week_ago = (now - timedelta(days=7)).replace(tzinfo=None)
+    week_ago = now - timedelta(days=7)
     today = now.date()
 
-    # 全部任务
-    tasks = (
-        await db.scalars(select(Task).where(Task.user_id == current.id))
-    ).all()
+    base = Task.user_id == current.id
 
-    total_todo = sum(1 for t in tasks if t.status == "todo")
-    total_done = sum(1 for t in tasks if t.status == "done")
-    week_completed = sum(
-        1
-        for t in tasks
-        if t.status == "done"
-        and t.completed_at
-        and _naive(t.completed_at) >= week_ago
+    # 待办 / 已完成总数
+    status_counts = dict(
+        (
+            await db.execute(
+                select(Task.status, func.count(Task.id)).where(base).group_by(Task.status)
+            )
+        ).all()
     )
+    total_todo = status_counts.get("todo", 0)
+    total_done = status_counts.get("done", 0)
 
-    # 连续完成天数（streak）：从今天往前数
+    # 本周完成数
+    week_completed = await db.scalar(
+        select(func.count(Task.id)).where(
+            base,
+            Task.status == "done",
+            Task.completed_at >= week_ago,
+        )
+    ) or 0
+
+    # 连续完成天数（streak）：从今天往前逐日查。
+    # 只统计 done 的 completed_at 日期集合，最坏逐天回溯，量级小；
+    # 相比全表加载仍显著更优。
     done_dates = {
-        t.completed_at.date()
-        for t in tasks
-        if t.status == "done" and t.completed_at
+        d
+        for (d,) in (
+            await db.execute(
+                select(cast(Task.completed_at, Date)).where(
+                    base, Task.status == "done", Task.completed_at.is_not(None)
+                ).distinct()
+            )
+        ).all()
     }
     streak = 0
     cur = today
@@ -57,62 +66,72 @@ async def summary(
         streak += 1
         cur -= timedelta(days=1)
 
-    # 各维度统计
-    cats = (
-        await db.scalars(
-            select(Category)
+    # 各维度统计：按 category 聚合 todo/done
+    cat_rows = (
+        await db.execute(
+            select(
+                Category.id,
+                Category.name,
+                Category.color,
+                Category.icon,
+                func.count(Task.id).filter(Task.status == "todo").label("todo"),
+                func.count(Task.id).filter(Task.status == "done").label("done"),
+            )
             .where(Category.user_id == current.id)
+            .join(Task, Task.category_id == Category.id, isouter=True)
+            .group_by(Category.id)
             .order_by(Category.sort_order)
         )
     ).all()
-    per_category = []
-    for c in cats:
-        ct = [t for t in tasks if t.category_id == c.id]
-        per_category.append(
-            {
-                "name": c.name,
-                "color": c.color,
-                "icon": c.icon,
-                "todo": sum(1 for t in ct if t.status == "todo"),
-                "done": sum(1 for t in ct if t.status == "done"),
-            }
-        )
+    per_category = [
+        {
+            "name": r.name,
+            "color": r.color,
+            "icon": r.icon,
+            "todo": r.todo,
+            "done": r.done,
+        }
+        for r in cat_rows
+    ]
 
-    # 目标进展
-    goals = (
-        await db.scalars(select(Goal).where(Goal.user_id == current.id))
-    ).all()
-    goals_progress = []
-    for g in goals:
-        gt = [t for t in tasks if t.goal_id == g.id]
-        total = len(gt)
-        done = sum(1 for t in gt if t.status == "done")
-        goals_progress.append(
-            {
-                "id": g.id,
-                "title": g.title,
-                "total": total,
-                "done": done,
-                "progress": round(done / total * 100) if total else 0,
-            }
-        )
-
-    # 专注时长
-    sessions = (
-        await db.scalars(
-            select(FocusSession).where(FocusSession.user_id == current.id)
+    # 目标进展：按 goal 聚合
+    goal_rows = (
+        await db.execute(
+            select(
+                Goal.id,
+                Goal.title,
+                func.count(Task.id).label("total"),
+                func.count(Task.id).filter(Task.status == "done").label("done"),
+            )
+            .where(Goal.user_id == current.id)
+            .join(Task, Task.goal_id == Goal.id, isouter=True)
+            .group_by(Goal.id)
         )
     ).all()
-    focus_minutes_today = sum(
-        s.minutes
-        for s in sessions
-        if s.started_at and s.started_at.date() == today
-    )
-    focus_minutes_week = sum(
-        s.minutes
-        for s in sessions
-        if s.started_at and _naive(s.started_at) >= week_ago
-    )
+    goals_progress = [
+        {
+            "id": r.id,
+            "title": r.title,
+            "total": r.total,
+            "done": r.done,
+            "progress": round(r.done / r.total * 100) if r.total else 0,
+        }
+        for r in goal_rows
+    ]
+
+    # 专注时长：今日 / 本周
+    focus_minutes_today = await db.scalar(
+        select(func.coalesce(func.sum(FocusSession.minutes), 0)).where(
+            FocusSession.user_id == current.id,
+            cast(FocusSession.started_at, Date) == today,
+        )
+    ) or 0
+    focus_minutes_week = await db.scalar(
+        select(func.coalesce(func.sum(FocusSession.minutes), 0)).where(
+            FocusSession.user_id == current.id,
+            FocusSession.started_at >= week_ago,
+        )
+    ) or 0
 
     return {
         "total_todo": total_todo,
@@ -121,6 +140,6 @@ async def summary(
         "streak": streak,
         "per_category": per_category,
         "goals_progress": goals_progress,
-        "focus_minutes_today": focus_minutes_today,
-        "focus_minutes_week": focus_minutes_week,
+        "focus_minutes_today": int(focus_minutes_today),
+        "focus_minutes_week": int(focus_minutes_week),
     }

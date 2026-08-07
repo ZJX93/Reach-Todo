@@ -68,3 +68,8 @@ SEED_DEMO_ACCOUNT = os.getenv("SEED_DEMO_ACCOUNT", "").strip().lower() in (
     "yes",
     "on",
 )
+
+# 万年历（apihz.cn）接口账号：默认沿用公共测试账号，
+# 生产环境请申请自己的免费账号后通过环境变量覆盖，避免限频与暴露。
+APIHZ_ID = os.getenv("APIHZ_ID", "88888888")
+APIHZ_KEY = os.getenv("APIHZ_KEY", "88888888")

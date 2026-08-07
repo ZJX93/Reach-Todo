@@ -10,7 +10,18 @@ from fastapi.staticfiles import StaticFiles
 from .config import CORS_ORIGINS
 from .database import init_db
 from .ratelimit import RateLimitMiddleware
-from .routers import auth, categories, goals, tasks, stats, focus, records, templates, holidays
+from .routers import (
+    auth,
+    categories,
+    goals,
+    tasks,
+    stats,
+    focus,
+    records,
+    templates,
+    holidays,
+    lunar,
+)
 
 # backend/ 目录；发布版前端构建产物放在 backend/static
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -46,6 +57,7 @@ app.include_router(focus.router)
 app.include_router(records.router)
 app.include_router(templates.router)
 app.include_router(holidays.router)
+app.include_router(lunar.router)
 
 
 @app.get("/health")

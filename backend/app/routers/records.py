@@ -24,15 +24,25 @@ async def list_records(
     db: AsyncSession = Depends(get_db),
     current: User = Depends(get_current_user),
 ):
+    # 日期入参统一转为 date 对象：SQLite 容忍字符串，但 PostgreSQL（asyncpg）
+    # 会因类型不匹配直接报 DataError，转换后双方言安全。
+    def _parse_date(s: str | None) -> date | None:
+        if not s:
+            return None
+        try:
+            return date.fromisoformat(s)
+        except ValueError as exc:
+            raise HTTPException(status_code=400, detail="日期格式应为 YYYY-MM-DD") from exc
+
     qry = select(Record).where(Record.user_id == current.id)
     if type:
         qry = qry.where(Record.type == type)
     if date:
-        qry = qry.where(Record.record_date == date)
+        qry = qry.where(Record.record_date == _parse_date(date))
     if from_date:
-        qry = qry.where(Record.record_date >= from_date)
+        qry = qry.where(Record.record_date >= _parse_date(from_date))
     if to_date:
-        qry = qry.where(Record.record_date <= to_date)
+        qry = qry.where(Record.record_date <= _parse_date(to_date))
     if q:
         like = f"%{q}%"
         qry = qry.where(
