@@ -116,8 +116,8 @@ export default function CalendarGrid({
                 </span>
               )}
 
-              {/* 记录/任务小点 */}
-              <span className="flex gap-1 mt-auto pt-1">
+              {/* 记录/任务小点；选中时加白边，避免蓝色点融进蓝色选中背景 */}
+              <span className={`flex gap-1 mt-auto pt-1 ${isSel ? '[&>i]:ring-1 [&>i]:ring-white' : ''}`}>
                 {d?.diary > 0 && (
                   <i className="w-1.5 h-1.5 rounded-full" style={{ backgroundColor: RECORD_TYPES.diary.color }} />
                 )}
