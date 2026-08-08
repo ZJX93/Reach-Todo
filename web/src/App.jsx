@@ -11,6 +11,7 @@ const Stats = lazy(() => import('./pages/Stats.jsx'))
 const Focus = lazy(() => import('./pages/Focus.jsx'))
 const Records = lazy(() => import('./pages/Records.jsx'))
 const Calendar = lazy(() => import('./pages/Calendar.jsx'))
+const Settings = lazy(() => import('./pages/Settings.jsx'))
 
 function Protected({ children }) {
   const { isAuth } = useAuth()
@@ -87,6 +88,14 @@ export default function App() {
           element={
             <Protected>
               <Calendar />
+            </Protected>
+          }
+        />
+        <Route
+          path="/settings"
+          element={
+            <Protected>
+              <Settings />
             </Protected>
           }
         />

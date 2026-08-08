@@ -55,7 +55,7 @@ async def _maybe_seed_demo_data():
         logging.getLogger(__name__).exception("演示数据播种失败，已跳过")
 
 
-app = FastAPI(title="抵达 Reach API", version="0.1.1", lifespan=lifespan)
+app = FastAPI(title="抵达 Reach API", version="0.2.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,

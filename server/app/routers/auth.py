@@ -4,7 +4,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ..database import SEED_CATEGORIES, get_db
 from ..models import User, Category
-from ..schemas import UserCreate, UserOut, TokenOut
+from ..schemas import UserCreate, UserOut, UserUpdate, PasswordChange, TokenOut
 from ..security import hash_password, verify_password, create_access_token
 from ..deps import get_current_user
 
@@ -51,3 +51,34 @@ async def login(payload: UserCreate, db: AsyncSession = Depends(get_db)):
 @router.get("/me", response_model=UserOut)
 async def me(current: User = Depends(get_current_user)):
     return current
+
+
+@router.patch("/me", response_model=UserOut)
+async def update_me(
+    payload: UserUpdate,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """更新当前用户的个人资料（目前只允许改邮箱）。"""
+    # 空字符串视作「清空邮箱」，None 表示不改
+    if payload.email is not None:
+        current.email = payload.email.strip() or None
+    await db.commit()
+    await db.refresh(current)
+    return current
+
+
+@router.post("/me/password")
+async def change_password(
+    payload: PasswordChange,
+    current: User = Depends(get_current_user),
+    db: AsyncSession = Depends(get_db),
+):
+    """修改密码：必须先校验旧密码，避免被挟持会话后无声改密。"""
+    if not verify_password(payload.old_password, current.hashed_password):
+        raise HTTPException(status_code=400, detail="当前密码不正确")
+    if payload.new_password == payload.old_password:
+        raise HTTPException(status_code=400, detail="新密码不能与当前密码相同")
+    current.hashed_password = hash_password(payload.new_password)
+    await db.commit()
+    return {"ok": True}

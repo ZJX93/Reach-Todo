@@ -2,7 +2,15 @@ import { RECORD_TYPES } from '../recordMeta.js'
 import { card } from '../ui.jsx'
 import { ymd } from '../../utils/date.js'
 
-const WEEK = ['日', '一', '二', '三', '四', '五', '六']
+const WEEK_SUN = ['日', '一', '二', '三', '四', '五', '六']
+const WEEK_MON = ['一', '二', '三', '四', '五', '六', '日']
+// 周末用 weekday 字符合集判定：日 (周日) / 六 (周六)；与周起始日无关，
+// 避免在两种顺序下分别维护「末两列 / 首末列」的下标逻辑。
+const WEEKEND_CHARS = new Set(['日', '六'])
+
+function getWeekOrder(weekStart) {
+  return weekStart === 'mon' ? WEEK_MON : WEEK_SUN
+}
 
 /**
  * 月历格子：纯展示组件。
@@ -14,10 +22,12 @@ const WEEK = ['日', '一', '二', '三', '四', '五', '六']
  * @param days 记录聚合 { [date]: { diary, worklog, note, tasks } }
  * @param lunarMap 农历缓存 { [date]: { lunar, term, festival } }
  * @param holidays 节假日 { [date]: { name, isOffDay } }
+ * @param weekStart 'sun' (默认) | 'mon'
  */
 export default function CalendarGrid({
-  cells, month, todayStr, selected, onSelect, days, lunarMap, holidays,
+  cells, month, todayStr, selected, onSelect, days, lunarMap, holidays, weekStart = 'sun',
 }) {
+  const weekOrder = getWeekOrder(weekStart)
   return (
     <div className={`${card} p-4 md:p-5 relative overflow-hidden`}>
       {/* 大月份水印 */}
@@ -27,8 +37,8 @@ export default function CalendarGrid({
 
       {/* 星期表头 */}
       <div className="relative grid grid-cols-7 text-center text-sm font-medium text-[#64748b] mb-2">
-        {WEEK.map((w, idx) => (
-          <div key={w} className={`py-2 ${idx === 0 || idx === 6 ? 'text-[#ef4444]' : ''}`}>
+        {weekOrder.map((w) => (
+          <div key={w} className={`py-2 ${WEEKEND_CHARS.has(w) ? 'text-[#ef4444]' : ''}`}>
             {w}
           </div>
         ))}

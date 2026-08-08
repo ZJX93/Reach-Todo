@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import api from '../api.js'
 import Layout from './Layout.jsx'
 import { header, cardLg, field, btnPrim, gradText } from './ui.jsx'
+import useSettingsStore from '../store/settingsStore.js'
 
 const PRESETS = [
   { m: 25, label: '专注 25' },
@@ -10,8 +11,11 @@ const PRESETS = [
 ]
 
 export default function Focus() {
-  const [minutes, setMinutes] = useState(25)
-  const [remaining, setRemaining] = useState(25 * 60)
+  // 默认时长取自系统设置，仅在新会话/手动重置时生效；
+  // 已经在跑的计时器不受设置变更影响，避免误清零
+  const defaultFocus = useSettingsStore((s) => s.defaultFocusMinutes)
+  const [minutes, setMinutes] = useState(defaultFocus)
+  const [remaining, setRemaining] = useState(defaultFocus * 60)
   const [running, setRunning] = useState(false)
   const [tasks, setTasks] = useState([])
   const [taskId, setTaskId] = useState('')

@@ -1,5 +1,7 @@
+import { useState } from 'react'
 import { useNavigate, useLocation } from 'react-router-dom'
 import { useAuth } from '../../auth.jsx'
+import ProfileModal from '../ProfileModal.jsx'
 
 const icons = {
   todo: (
@@ -51,6 +53,7 @@ export default function Sidebar({ summary, selected, onSelect }) {
   const navigate = useNavigate()
   const location = useLocation()
   const cats = summary?.categories || []
+  const [profileOpen, setProfileOpen] = useState(false)
 
   const isActive = (path) =>
     path === '/'
@@ -150,16 +153,46 @@ export default function Sidebar({ summary, selected, onSelect }) {
             </span>
           </button>
         ))}
-        <div className="flex items-center justify-between px-3 py-2">
-          <span className="text-sm text-[#475569] truncate">@{user?.username}</span>
+        <div className="flex items-center justify-between gap-1 px-2 pt-1">
           <button
-            onClick={logout}
-            className="text-xs text-[#475569] hover:text-[#ef4444] transition font-medium"
+            onClick={() => setProfileOpen(true)}
+            title="查看 / 修改个人信息"
+            className="flex items-center gap-2 min-w-0 px-2 py-1.5 rounded-lg text-sm text-[#475569] hover:bg-white/60 hover:text-[#0f172a] transition"
           >
-            退出
+            <span className="w-7 h-7 shrink-0 rounded-lg brand-gradient grid place-items-center text-white text-xs font-bold">
+              {(user?.username?.[0] || '?').toUpperCase()}
+            </span>
+            <span className="truncate">@{user?.username}</span>
+          </button>
+          <button
+            onClick={() => navigate('/settings')}
+            title="系统设置"
+            aria-label="系统设置"
+            className="p-2 rounded-lg text-[#475569] hover:bg-white/60 hover:text-[#0f172a] transition"
+          >
+            <svg
+              viewBox="0 0 24 24"
+              className="w-4 h-4"
+              stroke="currentColor"
+              strokeWidth="1.8"
+              fill="none"
+              strokeLinecap="round"
+              strokeLinejoin="round"
+            >
+              <circle cx="12" cy="12" r="3" />
+              <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
+            </svg>
           </button>
         </div>
+        <button
+          onClick={logout}
+          className="block w-full text-left px-3 py-1.5 text-xs text-[#475569] hover:text-[#ef4444] hover:bg-white/60 rounded-lg transition font-medium"
+        >
+          退出
+        </button>
       </div>
+
+      <ProfileModal open={profileOpen} onClose={() => setProfileOpen(false)} />
     </aside>
   )
 }

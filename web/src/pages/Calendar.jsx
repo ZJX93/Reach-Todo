@@ -6,8 +6,16 @@ import CalendarGrid from './components/CalendarGrid.jsx'
 import DayDetail from './components/DayDetail.jsx'
 import { fetchHolidayYear, fetchAllLunar, getCachedLunar } from '../services/lunar.js'
 import { ymd, todayStr, daysFromToday } from '../utils/date.js'
+import useSettingsStore from '../store/settingsStore.js'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}月` }))
+
+// getDay() → 在指定周起始下的列偏移。
+// weekStart='sun' (默认)：周日列 0 → offset = getDay()
+// weekStart='mon'        ：周日列 6 → offset = (getDay() + 6) % 7
+function offsetForWeek(getDay, weekStart) {
+  return weekStart === 'mon' ? (getDay + 6) % 7 : getDay
+}
 
 export default function Calendar() {
   const now = new Date()
@@ -21,6 +29,7 @@ export default function Calendar() {
   const [, setLoading] = useState(true)
   const [holidays, setHolidays] = useState({})
   const [lunarTick, setLunarTick] = useState(0)
+  const weekStart = useSettingsStore((s) => s.weekStart)
 
   useEffect(() => {
     const d = searchParams.get('date')
@@ -49,7 +58,7 @@ export default function Calendar() {
       fetchHolidayYear(year).then(setHolidays)
 
       const first = new Date(year, month - 1, 1)
-      const offset = first.getDay() // 周日为起点
+      const offset = offsetForWeek(first.getDay(), weekStart)
       const startD = new Date(year, month - 1, 1 - offset)
       const dateStrs = []
       for (let i = 0; i < 42; i++) {
@@ -60,11 +69,11 @@ export default function Calendar() {
       await fetchAllLunar(dateStrs)
       setLunarTick((t) => t + 1)
     })()
-  }, [year, month])
+  }, [year, month, weekStart])
 
   const cells = useMemo(() => {
     const first = new Date(year, month - 1, 1)
-    const offset = first.getDay()
+    const offset = offsetForWeek(first.getDay(), weekStart)
     const start = new Date(year, month - 1, 1 - offset)
     return Array.from({ length: 42 }, (_, i) => {
       const dt = new Date(start)
@@ -182,6 +191,7 @@ export default function Calendar() {
             days={days}
             lunarMap={lunarMap}
             holidays={holidays}
+            weekStart={weekStart}
           />
           <DayDetail
             selected={selected}
