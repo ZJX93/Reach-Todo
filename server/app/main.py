@@ -37,7 +37,7 @@ async def lifespan(app: FastAPI):
     # shutdown：无持久连接需要显式释放，连接池由 engine 自动回收
 
 
-app = FastAPI(title="抵达 Reach API", version="1.1.0", lifespan=lifespan)
+app = FastAPI(title="抵达 Reach API", version="0.1.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
