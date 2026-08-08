@@ -1,0 +1,13 @@
+fastapi
+uvicorn[standard]
+httpx>=0.27  # 节假日/万年历第三方接口代理
+sqlalchemy>=2.0
+alembic>=1.13
+asyncpg
+aiosqlite
+python-jose[cryptography]
+passlib[bcrypt]
+bcrypt==4.0.1
+pydantic>=2
+python-multipart
+nh3>=0.2.17  # 服务端富文本清洗（XSS 防护），未安装时自动退化为纯文本
