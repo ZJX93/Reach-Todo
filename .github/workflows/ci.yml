@@ -12,14 +12,14 @@ jobs:
     runs-on: ubuntu-latest
     defaults:
       run:
-        working-directory: apps/web
+        working-directory: web
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
           node-version: "22"
           cache: npm
-          cache-dependency-path: apps/web/package-lock.json
+          cache-dependency-path: web/package-lock.json
       # 用 npm install 而非 npm ci：在 package.json 与 lock 短暂不同步时（如新增依赖）
       # 也能正常安装，避免 CI 因 lock 漂移直接失败。
       - name: Install dependencies

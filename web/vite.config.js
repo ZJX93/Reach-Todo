@@ -9,14 +9,13 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://server:8000',
+        target: 'http://localhost:8000',
         changeOrigin: true,
       },
     },
   },
-  // 发布版：构建产物输出到 backend/static，由后端单端口托管
-  // emptyOutDir 关闭：沙箱 safe-delete 会拦截 vite 的 fs.rmSync，改为在构建前
-  // 用 Python shutil.rmtree 手动清空 backend/static（见构建脚本 / CI）。
+  // 单体部署：构建产物输出到 dist/，由根 Dockerfile 拷入 server/public，
+  // 最终由 FastAPI 在单端口(8000)同源托管。
   build: {
     outDir: 'dist',
     emptyOutDir: true,

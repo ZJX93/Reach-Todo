@@ -1,3 +1,13 @@
+# ============================================
+# Reach-Todo · Docker Compose（单体单镜像）
+# 应用容器(app，前后端一体) + PostgreSQL 容器，数据持久化于命名卷。
+# 所有敏感变量来自同目录 .env（已被 .gitignore 忽略，不入库）。
+#
+# 用法：
+#   docker compose up -d            # 构建根 Dockerfile 并启动
+#   docker compose pull && docker compose up -d   # 拉取 GHCR 预构建镜像
+# ============================================
+
 services:
   db:
     image: postgres:16-alpine
@@ -7,8 +17,6 @@ services:
       POSTGRES_DB: ${POSTGRES_DB:-reach}
       POSTGRES_USER: ${POSTGRES_USER:-reach}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-reach123}
-    ports:
-      - "5432:5432"
     volumes:
       - pgdata:/var/lib/postgresql/data
     healthcheck:
@@ -17,11 +25,12 @@ services:
       timeout: 5s
       retries: 10
 
-  backend:
+  app:
     build:
       context: .
-      dockerfile: backend/Dockerfile
-    container_name: reach-backend
+      dockerfile: Dockerfile
+    image: ghcr.io/zjx93/reach-todo:latest
+    container_name: reach-app
     restart: unless-stopped
     depends_on:
       db:
@@ -29,20 +38,18 @@ services:
     environment:
       # 默认 PostgreSQL（Docker 网络内通过服务名 db 访问）
       DATABASE_URL: postgresql+asyncpg://${POSTGRES_USER:-reach}:${POSTGRES_PASSWORD:-reach123}@db:5432/${POSTGRES_DB:-reach}
-      # 未设置 JWT_SECRET 时后端自动生成并持久化随机密钥（.jwt_secret），
+      # 未设置 JWT_SECRET 时后端自动生成并持久化随机密钥，
       # 生产环境强烈建议显式注入一个强随机值：JWT_SECRET=$(openssl rand -hex 32)
       JWT_SECRET: ${JWT_SECRET:-}
       JWT_ALGORITHM: HS256
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-1440}
-      # 前端由后端同源托管（单端口 8000），默认无需跨域；
-      # 仅在独立部署前端时才需要填写，例如 https://app.example.com
+      # 单体单端口同源托管，默认无需跨域；仅独立部署前端时才填
       CORS_ORIGINS: ${CORS_ORIGINS:-}
-      # 万年历第三方账号（默认公共测试账号，量大限频，生产请替换为自有账号）
+      # 万年历第三方账号（默认公共测试账号，量大限频，生产请替换自有账号）
       APIHZ_ID: ${APIHZ_ID:-88888888}
       APIHZ_KEY: ${APIHZ_KEY:-88888888}
     ports:
       - "8000:8000"
-    command: uvicorn app.main:app --host 0.0.0.0 --port 8000
 
 volumes:
   pgdata:

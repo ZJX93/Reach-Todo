@@ -4,7 +4,8 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, FileResponse
+from fastapi.staticfiles import StaticFiles
 
 from .config import CORS_ORIGINS
 from .database import init_db
@@ -23,7 +24,9 @@ from .routers import (
     export,
 )
 
-# backend/ 目录；发布版前端构建产物放在 backend/static
+# 单体部署：前端(React)构建产物放在 server/public，由 FastAPI 静态托管。
+# 参照 XIN-Wallet 思路（后端直接托管前端静态资源，单端口单镜像），
+# 但保留 Python(FastAPI) + React 技术栈。
 
 
 @asynccontextmanager
@@ -62,3 +65,25 @@ app.include_router(export.router)
 @app.get("/health")
 async def health():
     return JSONResponse({"status": "ok"})
+
+
+# ---------------------------------------------------------------------------
+# 单体前端托管（仅当 server/public 目录存在时启用）
+# 生产镜像由 Dockerfile 把 web/dist 拷入 server/public；本地只跑 API 时该目录
+# 不存在，则跳过，不影响接口调试。
+# ---------------------------------------------------------------------------
+PUBLIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+
+if os.path.isdir(PUBLIC_DIR):
+
+    @app.get("/{full_path:path}")
+    async def _spa_catch_all(full_path: str):
+        # 1) 命中真实静态文件（JS/CSS/图片等）直接返回
+        candidate = os.path.join(PUBLIC_DIR, full_path)
+        if os.path.isfile(candidate):
+            return FileResponse(candidate)
+        # 2) SPA history 路由回退到 index.html（/goals/123 等前端路由）
+        index = os.path.join(PUBLIC_DIR, "index.html")
+        if os.path.exists(index):
+            return FileResponse(index)
+        raise HTTPException(status_code=404, detail="Not found")
