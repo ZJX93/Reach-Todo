@@ -69,6 +69,14 @@ SEED_DEMO_ACCOUNT = os.getenv("SEED_DEMO_ACCOUNT", "").strip().lower() in (
     "on",
 )
 
+# 是否给 demo 账号灌整套演示数据（目标 / 任务 / 子任务 / 番茄钟 / 日记 / 模板）。
+# 与 SEED_DEMO_ACCOUNT 的区别很关键：后者只建账号 + 四个维度，而且仅在**整库零用户**
+# 时才生效——库里一旦有别的用户，demo 号根本不会被创建，自然一条数据都没有。
+#   未设置 / 0     → 不灌
+#   1|true|yes|on → demo 没有任务时才灌（幂等，重启不会重复写）
+#   force         → 每次启动都清空 demo 自己的数据后重建
+SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "").strip().lower()
+
 # 万年历（apihz.cn）接口账号：默认沿用公共测试账号，
 # 生产环境请申请自己的免费账号后通过环境变量覆盖，避免限频与暴露。
 APIHZ_ID = os.getenv("APIHZ_ID", "88888888")

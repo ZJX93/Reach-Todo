@@ -1,3 +1,4 @@
+import logging
 import os
 
 from contextlib import asynccontextmanager
@@ -7,7 +8,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from fastapi.staticfiles import StaticFiles
 
-from .config import CORS_ORIGINS
+from .config import CORS_ORIGINS, SEED_DEMO_DATA
 from .database import init_db
 from .ratelimit import RateLimitMiddleware
 from .routers import (
@@ -33,8 +34,25 @@ from .routers import (
 async def lifespan(app: FastAPI):
     # startup：建库 / 迁移 / seed
     await init_db()
+    await _maybe_seed_demo_data()
     yield
     # shutdown：无持久连接需要显式释放，连接池由 engine 自动回收
+
+
+async def _maybe_seed_demo_data():
+    """按 SEED_DEMO_DATA 开关给 demo 账号灌演示数据。
+
+    播种失败绝不能拖垮启动——演示数据只是锦上添花，
+    真出问题时应用仍要能正常提供服务，日志里留痕即可。
+    """
+    if SEED_DEMO_DATA not in ("1", "true", "yes", "on", "force"):
+        return
+    try:
+        from scripts.seed_demo_data import seed
+
+        await seed(force=(SEED_DEMO_DATA == "force"))
+    except Exception:  # noqa: BLE001
+        logging.getLogger(__name__).exception("演示数据播种失败，已跳过")
 
 
 app = FastAPI(title="抵达 Reach API", version="0.1.0", lifespan=lifespan)
