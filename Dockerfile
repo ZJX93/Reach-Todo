@@ -10,8 +10,10 @@
 FROM node:22-alpine AS web-build
 WORKDIR /web
 COPY web/package.json web/package-lock.json ./
-# 使用 npmmirror 镜像源加速
-RUN npm config set registry https://registry.npmmirror.com && npm ci
+# 使用 npmmirror 镜像源加速；用 npm install 而非 npm ci：
+# 在 package.json 与 lock 短暂不同步时（如新增依赖）也能正常安装，
+# 与 CI 的 frontend job 保持一致，避免 CI 因 lock 漂移直接失败。
+RUN npm config set registry https://registry.npmmirror.com && npm install
 COPY web ./
 RUN npm run build
 # 构建产物位于 /web/dist
