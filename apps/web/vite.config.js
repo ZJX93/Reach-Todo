@@ -9,7 +9,7 @@ export default defineConfig({
     port: 5173,
     proxy: {
       '/api': {
-        target: 'http://backend:8000',
+        target: 'http://server:8000',
         changeOrigin: true,
       },
     },
@@ -18,7 +18,7 @@ export default defineConfig({
   // emptyOutDir 关闭：沙箱 safe-delete 会拦截 vite 的 fs.rmSync，改为在构建前
   // 用 Python shutil.rmtree 手动清空 backend/static（见构建脚本 / CI）。
   build: {
-    outDir: '../backend/static',
-    emptyOutDir: false,
+    outDir: 'dist',
+    emptyOutDir: true,
   },
 })
