@@ -5,7 +5,7 @@ import Layout from './Layout.jsx'
 import CalendarGrid from './components/CalendarGrid.jsx'
 import DayDetail from './components/DayDetail.jsx'
 import { fetchHolidayYear, fetchAllLunar, getCachedLunar } from '../services/lunar.js'
-import { ymd, todayStr, daysFromToday } from '../utils/date.js'
+import { ymd, todayStr, daysFromToday, todayInTZ } from '../utils/date.js'
 import useSettingsStore from '../store/settingsStore.js'
 
 const MONTHS = Array.from({ length: 12 }, (_, i) => ({ value: i + 1, label: `${i + 1}月` }))
@@ -18,14 +18,16 @@ function offsetForWeek(getDay, weekStart) {
 }
 
 export default function Calendar() {
-  const now = new Date()
+  const timezone = useSettingsStore((s) => s.timezone)
   const [searchParams] = useSearchParams()
-  const [year, setYear] = useState(now.getFullYear())
-  const [month, setMonth] = useState(now.getMonth() + 1)
+  // 初始定位到"所选时区下的今天"，而非浏览器本地今天——否则在跨时区用户看来会错位一天
+  const [ty, tm, td] = todayInTZ(timezone).split('-').map(Number)
+  const [year, setYear] = useState(ty)
+  const [month, setMonth] = useState(tm)
   const [days, setDays] = useState({})
   const [tasks, setTasks] = useState([])
   const [summary, setSummary] = useState(null)
-  const [selected, setSelected] = useState(ymd(now.getFullYear(), now.getMonth() + 1, now.getDate()))
+  const [selected, setSelected] = useState(ymd(ty, tm, td))
   const [, setLoading] = useState(true)
   const [holidays, setHolidays] = useState({})
   const [lunarTick, setLunarTick] = useState(0)
@@ -121,10 +123,10 @@ export default function Calendar() {
   }
 
   const goToday = () => {
-    const t = new Date()
-    setYear(t.getFullYear())
-    setMonth(t.getMonth() + 1)
-    setSelected(ymd(t.getFullYear(), t.getMonth() + 1, t.getDate()))
+    const [y, m, d] = todayInTZ(timezone).split('-').map(Number)
+    setYear(y)
+    setMonth(m)
+    setSelected(ymd(y, m, d))
   }
 
   return (
@@ -135,7 +137,7 @@ export default function Calendar() {
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
               <h1 className="text-lg font-bold text-[#0f172a] font-display">日历</h1>
-              <p className="text-xs text-[#475569]">{daysFromToday(selected)}</p>
+              <p className="text-xs text-[#475569]">{daysFromToday(selected, timezone)}</p>
             </div>
             <div className="flex items-center gap-2">
               <input
@@ -185,7 +187,7 @@ export default function Calendar() {
           <CalendarGrid
             cells={cells}
             month={month}
-            todayStr={todayStr()}
+            todayStr={todayStr(timezone)}
             selected={selected}
             onSelect={setSelected}
             days={days}

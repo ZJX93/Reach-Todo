@@ -4,6 +4,7 @@ import { typeMeta, MOODS } from '../recordMeta.js'
 import RichTextEditor from '../components/RichTextEditor.jsx'
 import { field, btnPrim } from '../ui.jsx'
 import { todayStr, nowHM } from '../../utils/date.js'
+import useSettingsStore from '../../store/settingsStore.js'
 
 // 纯文本 → HTML（保留换行）；已含标签则原样保留
 function toHtml(s) {
@@ -12,6 +13,7 @@ function toHtml(s) {
 }
 
 export default function RecordEditor({ initial, templates, onClose, onSaved }) {
+  const timezone = useSettingsStore((s) => s.timezone)
   const isEdit = !!initial.id
   const [type] = useState(initial.type || 'diary')
   const [title, setTitle] = useState(initial.title || '')
@@ -21,8 +23,8 @@ export default function RecordEditor({ initial, templates, onClose, onSaved }) {
   const [bookTitle, setBookTitle] = useState(initial.book_title || '')
   const [bookAuthor, setBookAuthor] = useState(initial.book_author || '')
   const [tags, setTags] = useState(initial.tags || '')
-  const [date, setDate] = useState(initial.record_date || todayStr())
-  const [time, setTime] = useState(initial.record_time || nowHM())
+  const [date, setDate] = useState(initial.record_date || todayStr(timezone))
+  const [time, setTime] = useState(initial.record_time || nowHM(timezone))
   const [templateId, setTemplateId] = useState(null)
   const [saving, setSaving] = useState(false)
   const [showProps, setShowProps] = useState(false)

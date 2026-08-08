@@ -1,9 +1,31 @@
-// 本地日期工具：统一使用浏览器本地时区计算"今天"。
+// 本地日期工具：默认使用浏览器本地时区计算"今天"。
 // 历史背景：曾用 new Date().toISOString().slice(0,10)（UTC 日期），
 // 在 UTC+8 凌晨 0 点~8 点间会把"今天"算成昨天，导致待办/记录日期错位。
+//
+// 时区支持：todayStr(tz) / nowHM(tz) / daysFromToday(ds, tz) 均接受可选 IANA 时区名，
+// 不传则回落到浏览器本地时区（向后兼容既有调用）。日历、面板、记录编辑器据此按用户设置显示。
 
 function pad(n) {
   return String(n).padStart(2, '0')
+}
+
+/** 浏览器本地时区（模块加载时解析一次） */
+export const DEFAULT_TZ =
+  (typeof Intl !== 'undefined' && Intl.DateTimeFormat().resolvedOptions().timeZone) ||
+  'Asia/Shanghai'
+
+/** 指定时区下的"今天" YYYY-MM-DD（用 Intl 取该时区的年月日分量，避免手动换算跨日错误） */
+export function todayInTZ(tz = DEFAULT_TZ) {
+  const parts = new Intl.DateTimeFormat('en-CA', {
+    timeZone: tz,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit',
+  }).formatToParts(new Date())
+  const y = parts.find((p) => p.type === 'year').value
+  const m = parts.find((p) => p.type === 'month').value
+  const d = parts.find((p) => p.type === 'day').value
+  return `${y}-${m}-${d}`
 }
 
 /** Date 对象 → 本地 YYYY-MM-DD */
@@ -11,13 +33,24 @@ export function toYMD(d) {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 
-/** 今天的本地 YYYY-MM-DD */
-export function todayStr() {
-  return toYMD(new Date())
+/** 今天的 YYYY-MM-DD；可传 tz 按指定时区计算 */
+export function todayStr(tz) {
+  return tz ? todayInTZ(tz) : toYMD(new Date())
 }
 
-/** 当前时分 HH:MM */
-export function nowHM() {
+/** 当前时分 HH:MM；可传 tz 按指定时区计算 */
+export function nowHM(tz) {
+  if (tz) {
+    const parts = new Intl.DateTimeFormat('en-GB', {
+      timeZone: tz,
+      hour: '2-digit',
+      minute: '2-digit',
+      hour12: false,
+    }).formatToParts(new Date())
+    const h = parts.find((p) => p.type === 'hour').value
+    const m = parts.find((p) => p.type === 'minute').value
+    return `${h}:${m}`
+  }
   const d = new Date()
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`
 }
@@ -35,11 +68,13 @@ export function formatDateCN(ds) {
   return `${y}年${m}月${d}日 ${map[date.getDay()]}`
 }
 
-/** 目标日期相对今天的中文描述 */
-export function daysFromToday(ds) {
+/** 目标日期相对今天的中文描述；可传 tz 按指定时区的"今天"计算 */
+export function daysFromToday(ds, tz) {
   const [y, m, d] = ds.split('-').map(Number)
   const target = new Date(y, m - 1, d)
-  const today = new Date()
+  const todayStrVal = tz ? todayInTZ(tz) : toYMD(new Date())
+  const [ty, tm, td] = todayStrVal.split('-').map(Number)
+  const today = new Date(ty, tm - 1, td)
   today.setHours(0, 0, 0, 0)
   target.setHours(0, 0, 0, 0)
   const diff = Math.round((target - today) / 86400000)

@@ -19,9 +19,11 @@ import TaskForm from './components/TaskForm.jsx'
 import { header, field, btnPrim, Icon } from './ui.jsx'
 import { todayStr } from '../utils/date.js'
 import { getDueSoonTasks, kindLabel } from '../utils/reminders.js'
+import useSettingsStore from '../store/settingsStore.js'
 
 export default function Dashboard() {
   const { user, token } = useAuth()
+  const timezone = useSettingsStore((s) => s.timezone)
   const [categories, setCategories] = useState([])
   const [goals, setGoals] = useState([])
   const [tasks, setTasks] = useState([])
@@ -222,7 +224,7 @@ export default function Dashboard() {
     return () => clearInterval(id)
   }, [notifPerm])
 
-  const today = todayStr()
+  const today = todayStr(timezone)
 
   // 「今日待办」：未完成，且属于 今天 / 未来 / 未排期 的任务。
   // 已完成任务不显示；逾期的任务统一收进「逾期任务」折叠区。
