@@ -71,6 +71,11 @@ export default function Settings() {
   const setWeekStart = useSettingsStore((s) => s.setWeekStart)
   const timezone = useSettingsStore((s) => s.timezone)
   const setTimezone = useSettingsStore((s) => s.setTimezone)
+  const lunarSource = useSettingsStore((s) => s.lunarSource)
+  const lunarApiBase = useSettingsStore((s) => s.lunarApiBase)
+  const holidayApiBase = useSettingsStore((s) => s.holidayApiBase)
+  const lunarApiKey = useSettingsStore((s) => s.lunarApiKey)
+  const updateLunar = useSettingsStore((s) => s.updateLunar)
   const [profileOpen, setProfileOpen] = useState(false)
 
   // 当前所选时区的实时时钟（每秒刷新）
@@ -175,6 +180,63 @@ export default function Settings() {
               默认取浏览器所在时区（{typeof Intl !== 'undefined' ? Intl.DateTimeFormat().resolvedOptions().timeZone : '—'}）；
               若列表中没有你需要的时区，可直接在此选择相近的 IANA 时区。
             </p>
+          </div>
+        </Section>
+
+        <Section
+          title="农历数据"
+          desc="日历中的农历 / 节气 / 黄历 / 节假日数据来源"
+        >
+          <div className="flex flex-col gap-3">
+            <Segmented
+              value={lunarSource}
+              onChange={(v) => updateLunar({ lunarSource: v })}
+              options={[
+                { value: 'backend', label: '后端代理' },
+                { value: 'custom', label: '自定义接口' },
+              ]}
+            />
+            {lunarSource === 'custom' && (
+              <div className="flex flex-col gap-3 pl-1 border-l-2 border-white/70 ml-1 py-1">
+                <label className="block">
+                  <span className="text-xs text-[#475569]">农历接口地址</span>
+                  <input
+                    type="text"
+                    value={lunarApiBase}
+                    onChange={(e) => updateLunar({ lunarApiBase: e.target.value })}
+                    placeholder="https://api.vvhan.com/api/lunar?date={date}"
+                    className="mt-1.5 w-full border border-white/75 rounded-lg px-3 py-2 text-sm bg-white/70 text-[#0f172a] focus:border-[#06b6d4] focus:ring-2 focus:ring-[#06b6d4]/20 transition"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-[#475569]">节假日接口地址</span>
+                  <input
+                    type="text"
+                    value={holidayApiBase}
+                    onChange={(e) => updateLunar({ holidayApiBase: e.target.value })}
+                    placeholder="https://api.jiejiariapi.com/v1/holidays/{year}"
+                    className="mt-1.5 w-full border border-white/75 rounded-lg px-3 py-2 text-sm bg-white/70 text-[#0f172a] focus:border-[#06b6d4] focus:ring-2 focus:ring-[#06b6d4]/20 transition"
+                  />
+                </label>
+                <label className="block">
+                  <span className="text-xs text-[#475569]">接口密钥（可选）</span>
+                  <input
+                    type="password"
+                    value={lunarApiKey}
+                    onChange={(e) => updateLunar({ lunarApiKey: e.target.value })}
+                    placeholder="留空则不发送"
+                    className="mt-1.5 w-full border border-white/75 rounded-lg px-3 py-2 text-sm bg-white/70 text-[#0f172a] focus:border-[#06b6d4] focus:ring-2 focus:ring-[#06b6d4]/20 transition"
+                  />
+                </label>
+                <p className="text-[11px] text-[#94a3b8] leading-relaxed">
+                  地址中的占位符会被替换：农历支持 <code className="px-1 rounded bg-white/60">{`{date}`}</code>（YYYY-MM-DD）、
+                  <code className="px-1 rounded bg-white/60">{`{y}`}</code>/<code className="px-1 rounded bg-white/60">{`{m}`}</code>/<code className="px-1 rounded bg-white/60">{`{d}`}</code>；
+                  节假日支持 <code className="px-1 rounded bg-white/60">{`{year}`}</code>。
+                  密钥以 <code className="px-1 rounded bg-white/60">Authorization: Bearer</code> 发送；也可直接写进地址里。
+                  自定义接口需支持 CORS 或同源访问（前端直连，密钥仅存于本机浏览器）。
+                </p>
+              </div>
+            )}
           </div>
         </Section>
 

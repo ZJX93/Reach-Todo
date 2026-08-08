@@ -1,9 +1,23 @@
 // 农历 / 节气 / 黄历 / 节假日服务层：取数、缓存、解析。
 // 第三方万年历账号密钥只保存在后端（后端经 /api/lunar 代理 apihz.cn），
 // 前端不再内嵌任何第三方 key。
+// 数据源可在「系统设置 → 农历数据」切换：默认后端代理；也可选自定义接口（前端直连）。
+
+import useSettingsStore from '../store/settingsStore.js'
 
 const LUNAR_CACHE_KEY = 'reach_lunar_cache_v4'
 const HOLIDAY_CACHE_KEY = 'reach_holiday_cache_v1'
+
+// 把模板里的占位符替换为实际值：
+// 农历支持 {date}(YYYY-MM-DD) / {y}{m}{d}；节假日支持 {year}
+function fillTemplate(tpl, vars) {
+  return tpl
+    .replaceAll('{date}', vars.date || '')
+    .replaceAll('{year}', vars.year || '')
+    .replaceAll('{y}', vars.y || '')
+    .replaceAll('{m}', vars.m || '')
+    .replaceAll('{d}', vars.d || '')
+}
 
 /** 占位空对象工厂：统一字段集合，避免同一字面量手写多遍。 */
 export function emptyLunar(extra = {}) {
@@ -105,6 +119,28 @@ export async function fetchLunar(dateStr) {
   // 占位，防止同一天并发重复请求
   lunarCache[dateStr] = emptyLunar({ __p: true })
 
+  // 自定义接口模式：用户自行提供农历接口（前端直连，需 CORS / 同源）
+  const { lunarSource, lunarApiBase, lunarApiKey } = useSettingsStore.getState()
+  if (lunarSource === 'custom' && lunarApiBase) {
+    try {
+      const [y, m, d] = dateStr.split('-')
+      const url = fillTemplate(lunarApiBase, { date: dateStr, y, m, d })
+      const headers = lunarApiKey ? { Authorization: `Bearer ${lunarApiKey}` } : undefined
+      const r = await fetch(url, headers ? { headers } : undefined)
+      const j = await r.json()
+      const res = parseApizh(j) || parseVvhan(j)
+      if (res && (res.lunar || res.term || res.festival)) {
+        lunarCache[dateStr] = { ...res, __p: false }
+        persistLunarCache()
+        return lunarCache[dateStr]
+      }
+    } catch {
+      /* 自定义接口失败 → 不缓存，返回空 */
+    }
+    delete lunarCache[dateStr]
+    return emptyLunar()
+  }
+
   const sources = [
     { url: `/api/lunar/${dateStr}`, parse: parseApizh },
     { url: `https://api.vvhan.com/api/lunar?date=${dateStr}`, parse: parseVvhan },
@@ -175,6 +211,24 @@ function persistHolidayCache(obj) {
 
 export async function fetchHolidayYear(year) {
   if (holidayCache[year]) return holidayCache[year]
+
+  // 自定义接口模式：用户自行提供节假日接口（前端直连，需 CORS / 同源）
+  const { lunarSource, holidayApiBase, lunarApiKey } = useSettingsStore.getState()
+  if (lunarSource === 'custom' && holidayApiBase) {
+    try {
+      const url = fillTemplate(holidayApiBase, { year: String(year) })
+      const headers = lunarApiKey ? { Authorization: `Bearer ${lunarApiKey}` } : undefined
+      const r = await fetch(url, headers ? { headers } : undefined)
+      const data = await r.json()
+      const map = normalizeHoliday(data)
+      holidayCache[year] = map
+      persistHolidayCache(holidayCache)
+      return map
+    } catch {
+      return {}
+    }
+  }
+
   try {
     const r = await fetch(`/api/holidays/${year}`)
     const data = await r.json()
@@ -188,4 +242,21 @@ export async function fetchHolidayYear(year) {
   } catch {
     return {}
   }
+}
+
+// 兼容两种常见返回：{ "YYYY-MM-DD": {name, isOffDay} } 或 [{date,name,isOffDay}]
+function normalizeHoliday(data) {
+  if (!data) return {}
+  if (Array.isArray(data)) {
+    const map = {}
+    for (const it of data) {
+      if (it && it.date) map[it.date] = { name: it.name || '', isOffDay: !!it.isOffDay }
+    }
+    return map
+  }
+  const map = {}
+  for (const [k, v] of Object.entries(data)) {
+    map[k] = { name: v?.name || '', isOffDay: !!v?.isOffDay }
+  }
+  return map
 }

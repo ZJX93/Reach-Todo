@@ -21,6 +21,13 @@ const DEFAULTS = {
   defaultFocusMinutes: 25,
   weekStart: 'sun', // 'sun' | 'mon'
   timezone: BROWSER_TZ,
+  // 农历/节假日数据源：
+  // - lunarSource: 'backend' 走后端代理（apihz.cn / jiejiariapi，key 在服务端）
+  // - lunarSource: 'custom' 走用户自定义接口（前端直连，需 CORS / 同源）
+  lunarSource: 'backend', // 'backend' | 'custom'
+  lunarApiBase: '', // 自定义农历接口模板，支持 {date} / {y} / {m} / {d} 占位
+  holidayApiBase: '', // 自定义节假日接口模板，支持 {year} 占位
+  lunarApiKey: '', // 可选：自定义接口密钥，以 Authorization: Bearer 发送
 }
 
 const readSettings = () => {
@@ -58,6 +65,12 @@ const useSettingsStore = create((set) => ({
     const next = { ...readSettings(), timezone: tz }
     writeSettings(next)
     set({ timezone: tz })
+  },
+  // 农历数据源配置：合并写入（支持一次更新多个字段）
+  updateLunar: (partial) => {
+    const next = { ...readSettings(), ...partial }
+    writeSettings(next)
+    set(partial)
   },
 }))
 
