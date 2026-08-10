@@ -3,8 +3,9 @@ name: Publish Docker image
 on:
   push:
     branches: [main]
-    # 与 Android 发版标签对齐：Reach-Todo.APP-vX.Y.Z 触发，镜像打上对应的 X.Y.Z 版本标签
-    tags: ["Reach-Todo.APP-*"]
+  # Android 发版（softprops/action-gh-release 发布 Release）时，镜像打上对应的 X.Y.Z 版本标签
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       version:
