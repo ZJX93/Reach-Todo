@@ -3,8 +3,14 @@ name: Publish Docker image
 on:
   push:
     branches: [main]
-    tags: ["v*"]
+    # 与 Android 发版标签对齐：Reach-Todo.APP-vX.Y.Z 触发，镜像打上对应的 X.Y.Z 版本标签
+    tags: ["Reach-Todo.APP-*"]
   workflow_dispatch:
+    inputs:
+      version:
+        description: '版本号 X.Y.Z（如 0.0.9，留空则只打 latest + sha，不打版本标签）'
+        required: false
+        default: ''
 
 permissions:
   contents: read
@@ -37,14 +43,29 @@ jobs:
           registry: ghcr.io
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
+
+      # 版本来源：手动输入 > Android 发版标签(Reach-Todo.APP-vX.Y.Z) 提取
+      - name: Derive version
+        id: ver
+        run: |
+          VERSION=""
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION="${{ github.event.inputs.version }}"
+          elif [[ "${GITHUB_REF}" == refs/tags/Reach-Todo.APP-v* ]]; then
+            VERSION="${GITHUB_REF#refs/tags/Reach-Todo.APP-v}"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+          echo "Derived image version: '${VERSION}'"
+
       - id: meta
         uses: docker/metadata-action@v5
         with:
           images: ghcr.io/${{ github.repository }}
           tags: |
             type=raw,value=latest
-            type=semver,pattern={{version}}
             type=sha,format=short
+            type=raw,value=${{ steps.ver.outputs.version }},enable=${{ steps.ver.outputs.version != '' }}
+
       - uses: docker/build-push-action@v6
         with:
           context: .

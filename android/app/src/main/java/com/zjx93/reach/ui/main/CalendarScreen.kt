@@ -1,10 +1,11 @@
 package com.zjx93.reach.ui.main
 
+import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
 import androidx.compose.material3.*
@@ -18,15 +19,38 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.zjx93.reach.data.local.UserPrefs
+import com.zjx93.reach.data.model.CalendarDay
 import com.zjx93.reach.data.model.HolidayInfo
+import com.zjx93.reach.data.model.LunarInfo
 import com.zjx93.reach.data.repository.ReachRepository
 import com.zjx93.reach.ui.nav.Routes
 import com.zjx93.reach.util.buildMonthGrid
 import com.zjx93.reach.util.currentYearMonth
 import com.zjx93.reach.util.todayYmd
 import com.zjx93.reach.util.weekdayHeader
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.coroutineScope
+import java.time.DayOfWeek
 import java.time.LocalDate
+import java.util.concurrent.atomic.AtomicInteger
+
+// 记录/任务小点配色，与 web/src/pages/recordMeta.js、CalendarGrid.jsx 保持一致
+private val DIARY_COLOR = Color(0xFF14B8A6)   // 个人日记
+private val WORKLOG_COLOR = Color(0xFF2563EB) // 工作日志
+private val NOTE_COLOR = Color(0xFFF59E0B)    // 读书笔记
+private val TASK_COLOR = Color(0xFF94A3B8)    // 任务（灰）
+
+/** 给月历格子用的短农历文字：优先节日/节气，其次农历日（初一显示月份）。 */
+private fun cellLunar(info: LunarInfo?): String? {
+    if (info == null) return null
+    val festival = info.jieri?.takeIf { it.isNotBlank() }
+    val term = if (info.jieqiDays == "1") info.jieqi?.takeIf { it.isNotBlank() } else null
+    if (festival != null) return festival
+    if (term != null) return term
+    val nri = info.nri ?: return null
+    return if (nri == "初一") (info.nyue ?: nri) else nri
+}
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -39,9 +63,43 @@ fun CalendarScreen(nav: NavHostController) {
     var year by remember { mutableStateOf(iy) }
     var month by remember { mutableStateOf(im) }
     var holidays by remember { mutableStateOf<Map<String, HolidayInfo>>(emptyMap()) }
+    // 记录/任务按日聚合（与 web /records/calendar 对齐）
+    var calendarDays by remember { mutableStateOf<Map<String, CalendarDay>>(emptyMap()) }
+    // 农历按日缓存（屏幕级），避免跨月重复拉取
+    val lunarCache = remember { mutableMapOf<String, LunarInfo?>() }
+    var lunarMap by remember { mutableStateOf<Map<String, LunarInfo?>>(emptyMap()) }
 
     LaunchedEffect(year) {
         scope.launch { repo.holidays(year).onSuccess { holidays = it }.onFailure { } }
+    }
+
+    LaunchedEffect(year, month) {
+        // 1) 记录/任务聚合
+        launch {
+            repo.recordsCalendar(year, month).onSuccess { list ->
+                calendarDays = list.associateBy { it.date }
+            }
+        }
+        // 2) 农历/节气/节日：与 web 一致逐日拉取（服务端有缓存），限并发避免抖动
+        val dates = buildMonthGrid(year, month, settings.weekStart != "mon")
+            .mapNotNull { it?.toString() }
+        val result = mutableMapOf<String, LunarInfo?>()
+        coroutineScope {
+            val idx = AtomicInteger(0)
+            val workers = List(4) {
+                launch(Dispatchers.IO) {
+                    while (true) {
+                        val cur = idx.getAndIncrement()
+                        if (cur >= dates.size) break
+                        val ds = dates[cur]
+                        val info = lunarCache[ds] ?: repo.lunar(ds).getOrNull()?.also { lunarCache[ds] = it }
+                        result[ds] = info
+                    }
+                }
+            }
+            workers.forEach { it.join() }
+        }
+        lunarMap = result
     }
 
     val today = todayYmd(settings.timezone)
@@ -69,19 +127,72 @@ fun CalendarScreen(nav: NavHostController) {
             weeks.forEach { week ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     week.forEach { d ->
-                        val ds = d?.let { LocalDate.of(it.year, it.monthValue, it.dayOfMonth).toString() }
+                        val ds = d?.toString()
+                        val inMonth = d?.monthValue == month
                         val hol = ds?.let { holidays[it] }
+                        val cal = ds?.let { calendarDays[it] }
+                        val lun = ds?.let { lunarMap[it] }
+                        val isToday = ds == today
+                        val isWeekend = d?.dayOfWeek == DayOfWeek.SATURDAY || d?.dayOfWeek == DayOfWeek.SUNDAY
+                        val dim = if (!inMonth) 0.4f else 1f
+
+                        val cellBg = when {
+                            hol != null && hol.isOffDay -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.20f)
+                            hol != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+                            else -> Color.Transparent
+                        }
+                        val dayColor = when {
+                            isToday -> MaterialTheme.colorScheme.primary
+                            isWeekend -> MaterialTheme.colorScheme.error
+                            else -> MaterialTheme.colorScheme.onSurface
+                        }
+
                         Box(
                             modifier = Modifier.weight(1f).aspectRatio(1f)
                                 .padding(2.dp)
                                 .clip(RoundedCornerShape(10.dp))
-                                .clickable { d?.let { nav.navigate("${Routes.DAY_DETAIL}?date=${it.year}-${String.format(java.util.Locale.US, "%02d", it.monthValue)}-${String.format(java.util.Locale.US, "%02d", it.dayOfMonth)}") } },
-                            contentAlignment = Alignment.Center,
+                                .background(cellBg)
+                                .clickable { d?.let { nav.navigate("${Routes.DAY_DETAIL}?date=${it}") } },
+                            contentAlignment = Alignment.TopCenter,
                         ) {
-                            Column(horizontalAlignment = Alignment.CenterHorizontally) {
-                                Text("${d?.dayOfMonth ?: ""}", fontSize = 15.sp, color = if (ds == today) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurface)
-                                hol?.name?.let {
-                                    Text(it.take(2), fontSize = 9.sp, color = if (hol.isOffDay) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline)
+                            // 休 / 班 角标
+                            if (hol != null) {
+                                Box(
+                                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
+                                        .background(
+                                            if (hol.isOffDay) Color(0xFFEF4444) else Color(0xFF2563EB),
+                                            RoundedCornerShape(3.dp),
+                                        )
+                                        .padding(horizontal = 3.dp, vertical = 1.dp),
+                                ) {
+                                    Text(if (hol.isOffDay) "休" else "班", fontSize = 8.sp, color = Color.White)
+                                }
+                            }
+
+                            Column(
+                                horizontalAlignment = Alignment.CenterHorizontally,
+                                modifier = Modifier.fillMaxSize().padding(top = 4.dp),
+                            ) {
+                                Text("${d?.dayOfMonth ?: ""}", fontSize = 15.sp, color = dayColor.copy(alpha = dim))
+                                cellLunar(lun)?.let {
+                                    Text(it, fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dim), maxLines = 1)
+                                }
+                                Spacer(Modifier.weight(1f))
+                                val dots = listOfNotNull(
+                                    if ((cal?.diary ?: 0) > 0) DIARY_COLOR else null,
+                                    if ((cal?.worklog ?: 0) > 0) WORKLOG_COLOR else null,
+                                    if ((cal?.note ?: 0) > 0) NOTE_COLOR else null,
+                                    if ((cal?.tasks ?: 0) > 0) TASK_COLOR else null,
+                                )
+                                if (dots.isNotEmpty()) {
+                                    Row(
+                                        horizontalArrangement = Arrangement.Center,
+                                        modifier = Modifier.padding(bottom = 3.dp),
+                                    ) {
+                                        dots.forEach { c ->
+                                            Box(Modifier.padding(horizontal = 1.dp).size(4.dp).background(c.copy(alpha = dim), CircleShape))
+                                        }
+                                    }
                                 }
                             }
                         }
