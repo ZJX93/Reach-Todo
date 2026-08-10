@@ -12,6 +12,8 @@ import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
+import com.zjx93.reach.data.local.UserPrefs
+import kotlinx.coroutines.launch
 import com.zjx93.reach.ui.nav.Routes
 import com.zjx93.reach.ui.theme.BrandGradient
 import com.zjx93.reach.viewmodel.AuthViewModel
@@ -24,6 +26,10 @@ fun RegisterScreen(nav: NavHostController) {
     var username by remember { mutableStateOf("") }
     var email by remember { mutableStateOf("") }
     var password by remember { mutableStateOf("") }
+
+    val scope = rememberCoroutineScope()
+    val serverUrl by UserPrefs.serverUrlFlow.collectAsState(initial = "http://192.168.9.3:8000")
+    var urlText by remember(serverUrl) { mutableStateOf(serverUrl) }
 
     LaunchedEffect(state.user) {
         if (state.user != null) {
@@ -48,6 +54,13 @@ fun RegisterScreen(nav: NavHostController) {
             tonalElevation = 4.dp,
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
+                OutlinedTextField(
+                    value = urlText, onValueChange = { urlText = it },
+                    label = { Text("服务器地址") }, singleLine = true,
+                    placeholder = { Text("http://192.168.9.3:8000") },
+                    modifier = Modifier.fillMaxWidth(),
+                )
+                Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = username, onValueChange = { username = it }, label = { Text("用户名") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                 Spacer(Modifier.height(12.dp))
                 OutlinedTextField(value = email, onValueChange = { email = it }, label = { Text("邮箱（可选）") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -64,7 +77,12 @@ fun RegisterScreen(nav: NavHostController) {
                 }
                 Spacer(Modifier.height(16.dp))
                 Button(
-                    onClick = { vm.register(username, email, password) {} },
+                    onClick = {
+                        scope.launch {
+                            UserPrefs.setServerUrl(urlText.trim().trimEnd('/'))
+                            vm.register(username, email, password) {}
+                        }
+                    },
                     enabled = !state.loading,
                     modifier = Modifier.fillMaxWidth().height(48.dp),
                 ) {
