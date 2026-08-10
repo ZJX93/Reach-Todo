@@ -1,5 +1,6 @@
 package com.zjx93.reach.ui.auth
 
+import com.zjx93.reach.R
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
@@ -7,6 +8,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.unit.dp
@@ -58,6 +60,7 @@ fun RegisterScreen(nav: NavHostController) {
                     value = urlText, onValueChange = { urlText = it },
                     label = { Text("服务器地址") }, singleLine = true,
                     placeholder = { Text("http://192.168.9.3:8000") },
+                    leadingIcon = { Icon(painter = painterResource(R.drawable.ic_brand), contentDescription = null) },
                     modifier = Modifier.fillMaxWidth(),
                 )
                 Spacer(Modifier.height(12.dp))

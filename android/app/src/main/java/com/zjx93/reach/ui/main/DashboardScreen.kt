@@ -22,7 +22,6 @@ import androidx.navigation.NavHostController
 import com.zjx93.reach.data.model.TaskOut
 import com.zjx93.reach.ui.nav.Routes
 import com.zjx93.reach.viewmodel.DashboardViewModel
-import java.time.LocalTime
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -37,8 +36,8 @@ fun DashboardScreen(nav: NavHostController) {
             LazyColumn(modifier = Modifier.fillMaxSize().padding(padding).padding(16.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
                 item {
                     Text("你好，${state.user?.username ?: "朋友"} 👋", style = MaterialTheme.typography.headlineSmall, fontWeight = FontWeight.Bold)
-                    val now = LocalTime.now().hour
-                    Text(if (now < 12) "新的一天，开始行动" else if (now < 18) "下午好，保持节奏" else "晚上好，复盘一下今天", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.outline)
+                    Spacer(Modifier.height(2.dp))
+                    Text("让每一天都有迹可循", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
                 }
 
                 item {
