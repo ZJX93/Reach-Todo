@@ -70,7 +70,7 @@ object AppUpdater {
             }
             ReleaseInfo(version, tagName, apkUrl, apkName)
         }.also {
-            Log.d(TAG, "fetchLatest tag=$tagName version=${it.version} hasApk=${it.apkUrl != null}")
+            Log.d(TAG, "fetchLatest tag=${it.tagName} version=${it.version} hasApk=${it.apkUrl != null}")
         }
     }
 
