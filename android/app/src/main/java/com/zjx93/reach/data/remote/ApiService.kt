@@ -98,4 +98,11 @@ interface ApiService {
 
     @GET("/api/holidays/{year}")
     suspend fun holidays(@Path("year") year: Int): Map<String, HolidayInfo>
+
+    // ---------------- 设备推送 ----------------
+    @POST("/api/devices/register")
+    suspend fun registerDevice(@Body body: DeviceRegister): OkResponse
+
+    @POST("/api/devices/unregister")
+    suspend fun unregisterDevice(@Body body: DeviceRegister): OkResponse
 }

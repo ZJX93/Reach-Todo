@@ -2,9 +2,11 @@ package com.zjx93.reach.viewmodel
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.zjx93.reach.ReachApplication
 import com.zjx93.reach.data.model.UserOut
 import com.zjx93.reach.data.remote.Session
 import com.zjx93.reach.data.repository.ReachRepository
+import com.zjx93.reach.util.FcmHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
@@ -41,6 +43,7 @@ class AuthViewModel(private val repo: ReachRepository = ReachRepository()) : Vie
             repo.login(username.trim(), password)
                 .onSuccess { t ->
                     _state.update { it.copy(user = t.user, loading = false) }
+                    FcmHelper.registerCurrentDevice(ReachApplication.appContext)
                     onOk()
                 }
                 .onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } }
@@ -55,6 +58,7 @@ class AuthViewModel(private val repo: ReachRepository = ReachRepository()) : Vie
             repo.register(username.trim(), email.trim().ifBlank { null }, password)
                 .onSuccess { t ->
                     _state.update { it.copy(user = t.user, loading = false) }
+                    FcmHelper.registerCurrentDevice(ReachApplication.appContext)
                     onOk()
                 }
                 .onFailure { e -> _state.update { it.copy(loading = false, error = e.message) } }

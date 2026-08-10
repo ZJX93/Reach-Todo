@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import api from '../api.js'
+import { initWebPush } from '../lib/fcm.js'
 
 // 全局认证状态（zustand）：替代原先的 React Context，避免逐层透传，
 // 任意组件可直接 useAuthStore(selector) 订阅，且无需 Provider 包裹。
@@ -22,6 +23,7 @@ const useAuthStore = create((set) => ({
     localStorage.setItem('token', data.access_token)
     localStorage.setItem('user', JSON.stringify(data.user))
     set({ token: data.access_token, user: data.user, isAuth: true })
+    initWebPush()
     return data
   },
 
@@ -30,6 +32,7 @@ const useAuthStore = create((set) => ({
     localStorage.setItem('token', data.access_token)
     localStorage.setItem('user', JSON.stringify(data.user))
     set({ token: data.access_token, user: data.user, isAuth: true })
+    initWebPush()
     return data
   },
 

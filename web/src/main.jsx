@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client'
 import { BrowserRouter } from 'react-router-dom'
 import App from './App.jsx'
 import ErrorBoundary from './components/ErrorBoundary.jsx'
+import { initWebPush } from './lib/fcm.js'
 import './index.css'
 
 // 自托管 Google 字体（原 Sora / Plus Jakarta Sans / Noto Sans SC）。
@@ -19,6 +20,11 @@ import '@fontsource/plus-jakarta-sans/700.css'
 import '@fontsource/noto-sans-sc/400.css'
 import '@fontsource/noto-sans-sc/500.css'
 import '@fontsource/noto-sans-sc/700.css'
+
+// 已登录（刷新后）则重新注册 Web 推送，确保后台订阅有效
+if (localStorage.getItem('token')) {
+  initWebPush()
+}
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

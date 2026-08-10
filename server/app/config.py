@@ -81,3 +81,22 @@ SEED_DEMO_DATA = os.getenv("SEED_DEMO_DATA", "").strip().lower()
 # 生产环境请申请自己的免费账号后通过环境变量覆盖，避免限频与暴露。
 APIHZ_ID = os.getenv("APIHZ_ID", "88888888")
 APIHZ_KEY = os.getenv("APIHZ_KEY", "88888888")
+
+# ---------------------------------------------------------------------------
+# FCM 推送（多端到期提醒）
+# ---------------------------------------------------------------------------
+# 凭证二选一：
+#   1) FCM_SERVICE_ACCOUNT_JSON 指向 Firebase Admin SDK 服务账号 JSON 文件路径；
+#   2) 分别指定 FCM_PROJECT_ID / FCM_CLIENT_EMAIL / FCM_PRIVATE_KEY
+#      （私钥里的换行符用 \\n 转义成字面两字符，或保留真实换行均可，代码会归一化）。
+# 未配置时后端推送自动降级为 no-op（仅打 warning），不影响其他功能。
+FCM_SERVICE_ACCOUNT_JSON = os.getenv("FCM_SERVICE_ACCOUNT_JSON", "").strip()
+FCM_PROJECT_ID = os.getenv("FCM_PROJECT_ID", "").strip()
+FCM_CLIENT_EMAIL = os.getenv("FCM_CLIENT_EMAIL", "").strip()
+FCM_PRIVATE_KEY = os.getenv("FCM_PRIVATE_KEY", "").strip()
+# 提醒提前量（分钟）：任务到期前多久推送；0 表示到期时刻推送。
+FCM_REMINDER_LEAD_MINUTES = int(os.getenv("FCM_REMINDER_LEAD_MINUTES", "10"))
+# 是否启用后台提醒调度器（FCM 凭证齐全才真正生效，未配置则 no-op）。
+FCM_REMINDER_ENABLED = (
+    os.getenv("FCM_REMINDER_ENABLED", "1").strip().lower() in ("1", "true", "yes", "on")
+)

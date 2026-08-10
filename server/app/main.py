@@ -23,7 +23,9 @@ from .routers import (
     holidays,
     lunar,
     export,
+    devices,
 )
+from .scheduler import start as scheduler_start, stop as scheduler_stop
 
 # 单体部署：前端(React)构建产物放在 server/public，由 FastAPI 静态托管。
 # 参照 XIN-Wallet 思路（后端直接托管前端静态资源，单端口单镜像），
@@ -35,8 +37,10 @@ async def lifespan(app: FastAPI):
     # startup：建库 / 迁移 / seed
     await init_db()
     await _maybe_seed_demo_data()
+    scheduler_start()  # 启动后台到期提醒调度器（FCM 凭证未配置时自动 no-op）
     yield
-    # shutdown：无持久连接需要显式释放，连接池由 engine 自动回收
+    scheduler_stop()  # shutdown：取消调度器任务
+    # 无持久连接需要显式释放，连接池由 engine 自动回收
 
 
 async def _maybe_seed_demo_data():
@@ -78,6 +82,7 @@ app.include_router(templates.router)
 app.include_router(holidays.router)
 app.include_router(lunar.router)
 app.include_router(export.router)
+app.include_router(devices.router)
 
 
 @app.get("/health")

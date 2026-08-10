@@ -249,6 +249,12 @@ data class HolidayInfo(
     @SerializedName("isOffDay") val isOffDay: Boolean = false,
 )
 
+data class DeviceRegister(
+    val token: String,
+    val platform: String = "android",
+    val device_name: String? = null,
+)
+
 data class OkResponse(
     val ok: Boolean = false,
 )

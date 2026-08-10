@@ -45,3 +45,6 @@ captures/
 *.ipr
 *.iws
 xffff
+
+# Firebase 配置（含项目密钥，禁止提交；用 google-services.example.json 作模板）
+google-services.json

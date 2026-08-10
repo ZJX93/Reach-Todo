@@ -239,6 +239,14 @@ async def update_task(
                 t.completed_at = None
         setattr(t, k, v)
 
+    # 到期时间 / 重复规则变更：重置提醒标记，允许重新提醒
+    changed_schedule = any(
+        k in payload.model_dump(exclude_unset=True)
+        for k in ("due_date", "due_time", "recurrence")
+    )
+    if changed_schedule:
+        t.reminder_sent_at = None
+
     await db.commit()
     await db.refresh(t, attribute_names=["category", "goal"])
     return _to_out(t)

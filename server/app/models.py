@@ -34,6 +34,9 @@ class User(Base):
     tasks: Mapped[list["Task"]] = relationship(
         back_populates="owner", cascade="all, delete-orphan"
     )
+    device_tokens: Mapped[list["DeviceToken"]] = relationship(
+        back_populates="user", cascade="all, delete-orphan"
+    )
 
 
 class Category(Base):
@@ -113,6 +116,11 @@ class Task(Base):
     completed_at: Mapped[Optional[datetime]] = mapped_column(
         DateTime(timezone=True), nullable=True
     )
+    # 最近一次到期提醒已推送的时间；为空表示尚未推送。调度器据此去重，
+    # 重复任务顺延后（新任务 reminder_sent_at 默认空）会重新触发。
+    reminder_sent_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
 
     owner: Mapped["User"] = relationship(back_populates="tasks")
     category: Mapped["Category"] = relationship(back_populates="tasks")
@@ -128,6 +136,28 @@ class Task(Base):
     children: Mapped[list["Task"]] = relationship(
         "Task", back_populates="parent", cascade="all, delete-orphan"
     )
+
+
+class DeviceToken(Base):
+    """设备推送令牌：每个登录设备（安卓 / Web）一条记录，用于多端推送。"""
+
+    __tablename__ = "device_tokens"
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    user_id: Mapped[int] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"), index=True
+    )
+    token: Mapped[str] = mapped_column(String(512), index=True)
+    platform: Mapped[str] = mapped_column(String(20), default="android")  # android | web
+    device_name: Mapped[Optional[str]] = mapped_column(String(120), nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True), server_default=func.now()
+    )
+    last_used_at: Mapped[Optional[datetime]] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )
+
+    user: Mapped["User"] = relationship(back_populates="device_tokens")
 
 
 class FocusSession(Base):
