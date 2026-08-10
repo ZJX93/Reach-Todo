@@ -9,6 +9,7 @@ import com.zjx93.reach.data.remote.RetrofitClient
 import com.zjx93.reach.data.remote.Session
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 
