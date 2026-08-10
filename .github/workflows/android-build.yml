@@ -52,35 +52,38 @@ jobs:
       - name: Build with Gradle (assembleDebug)
         run: ./gradlew assembleDebug --no-daemon
 
-      - name: Rename APK
+      - name: Decide versions and rename APK
+        id: ver
+        shell: bash
         run: |
+          if [ -n "${{ github.event.inputs.version }}" ]; then
+            VERSION_INPUT="${{ github.event.inputs.version }}"
+          else
+            VERSION_INPUT="Reach-Todo.APP-v0.0.1"
+          fi
+          ANDROID_VERSION=$(echo "$VERSION_INPUT" | sed -n 's/.*\(v[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+          [ -z "$ANDROID_VERSION" ] && ANDROID_VERSION="v0.0.1"
+          APK_NAME="Reach-Todo.android-${ANDROID_VERSION}.apk"
+
           SRC="${{ github.workspace }}/android/app/build/outputs/apk/debug/app-debug.apk"
-          DST="${{ github.workspace }}/android/app/build/outputs/apk/debug/Reach-Todo.android-v0.0.1.apk"
+          DST="${{ github.workspace }}/android/app/build/outputs/apk/debug/${APK_NAME}"
           cp "$SRC" "$DST"
+
+          echo "tag=$VERSION_INPUT" >> "$GITHUB_OUTPUT"
+          echo "apk_name=$APK_NAME" >> "$GITHUB_OUTPUT"
 
       - name: Upload APK (build artifact)
         uses: actions/upload-artifact@v4
         with:
-          name: Reach-Todo.android-v0.0.1
-          path: android/app/build/outputs/apk/debug/Reach-Todo.android-v0.0.1.apk
-
-      - name: Decide release tag
-        id: tag
-        if: github.event_name == 'workflow_dispatch'
-        shell: bash
-        run: |
-          if [ -n "${{ github.event.inputs.version }}" ]; then
-            echo "tag=${{ github.event.inputs.version }}" >> "$GITHUB_OUTPUT"
-          else
-            echo "tag=Reach-Todo.APP-v0.0.1" >> "$GITHUB_OUTPUT"
-          fi
+          name: ${{ steps.ver.outputs.apk_name }}
+          path: android/app/build/outputs/apk/debug/${{ steps.ver.outputs.apk_name }}
 
       - name: Publish APK to GitHub Release
         if: github.event_name == 'workflow_dispatch'
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.tag.outputs.tag }}
-          name: ${{ steps.tag.outputs.tag }}
-          files: android/app/build/outputs/apk/debug/Reach-Todo.android-v0.0.1.apk
+          tag_name: ${{ steps.ver.outputs.tag }}
+          name: ${{ steps.ver.outputs.tag }}
+          files: android/app/build/outputs/apk/debug/${{ steps.ver.outputs.apk_name }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
