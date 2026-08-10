@@ -1,0 +1,8 @@
+<resources xmlns:tools="http://schemas.android.com/tools">
+    <!-- Compose-only app: the actual look is provided by ReachTheme (Compose).
+         The manifest theme only needs a framework theme that always exists. -->
+    <style name="Theme.Reach" parent="android:Theme.Material.Light.NoActionBar">
+        <item name="android:windowNoTitle">true</item>
+        <item name="android:windowActionBar">false</item>
+    </style>
+</resources>

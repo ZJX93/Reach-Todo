@@ -188,3 +188,10 @@ CI 工作流 `.github/workflows/ci.yml` 在每次 push / PR 自动安装依赖�
 ## 📄 许可证
 
 [MIT](./LICENSE) © 2026 ZJX93
+
+## Mobile client (Android)
+
+The native Android app lives in the [`android/`](android/) subdirectory. It is a standalone Gradle project (Kotlin + Jetpack Compose) that uses the same backend API as the web client.
+
+- CI: [`.github/workflows/android-build.yml`](.github/workflows/android-build.yml) builds `app-debug.apk` on every push/PR that touches `android/`.
+- Local build: `cd android && ./gradlew assembleDebug`
