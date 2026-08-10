@@ -12,6 +12,7 @@ import androidx.compose.material.icons.filled.ArrowBack
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
+import android.app.DownloadManager
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.dp
@@ -120,14 +121,27 @@ private fun UpdateSection() {
         }
     }
 
-    // 轮询下载进度（下载管理器不主动回调进度）
+    // 轮询下载进度；下载完成后（进度不可获取）据状态触发安装或报错
     LaunchedEffect(downloading) {
         if (!downloading || downloadId < 0) return@LaunchedEffect
-        while (downloading) {
+        while (true) {
             val p = AppUpdater.queryProgress(context, downloadId)
-            if (p < 0f) { downloading = false; break }
-            progress = p
-            delay(400)
+            if (p >= 0f) {
+                progress = p
+                delay(400)
+                continue
+            }
+            // 进度不可获取 => 下载已结束（成功/失败/暂停）
+            when (AppUpdater.getDownloadStatus(context, downloadId)) {
+                DownloadManager.STATUS_SUCCESSFUL -> {
+                    AppUpdater.installApk(context, AppUpdater.updateFile(context))
+                }
+                DownloadManager.STATUS_FAILED -> {
+                    error = "下载失败，请点击升级重试"
+                }
+            }
+            downloading = false
+            break
         }
     }
 

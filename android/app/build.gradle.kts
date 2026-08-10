@@ -8,12 +8,28 @@ android {
     namespace = "com.zjx93.reach"
     compileSdk = 34
 
+    // 版本号默认与发布 tag 保持一致；CI 通过 -PappVersionName/-PappVersionCode 注入，
+    // 保证 APK 内 versionName 与 GitHub Release 语义版本一致，App 内「一键升级」比对才准确。
+    val appVersionName = (project.findProperty("appVersionName") as String?) ?: "0.0.7"
+    val appVersionCode = (project.findProperty("appVersionCode") as String?)?.toIntOrNull() ?: 7
+
+    // 固定 debug keystore（随仓库提交），保证本地与 CI 构建、以及历次 Release 之间的
+    // 签名一致——否则应用内「一键升级」下载的 APK 会与已安装应用签名冲突而无法安装。
+    signingConfigs {
+        getByName("debug") {
+            storeFile = file("../debug.keystore")
+            storePassword = "android"
+            keyAlias = "androiddebugkey"
+            keyPassword = "android"
+        }
+    }
+
     defaultConfig {
         applicationId = "com.zjx93.reach"
         minSdk = 26
         targetSdk = 34
-        versionCode = 7
-        versionName = "0.0.7"
+        versionCode = appVersionCode
+        versionName = appVersionName
         vectorDrawables { useSupportLibrary = true }
     }
 

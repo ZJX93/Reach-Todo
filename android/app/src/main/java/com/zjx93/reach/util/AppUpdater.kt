@@ -1,16 +1,13 @@
 package com.zjx93.reach.util
 
 import android.app.DownloadManager
-import android.content.BroadcastReceiver
 import android.content.Context
 import android.content.Intent
-import android.content.IntentFilter
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
 import android.util.Log
-import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -130,35 +127,17 @@ object AppUpdater {
         }
         val id = dm.enqueue(req)
         Log.d(TAG, "enqueue download id=$id url=$apkUrl -> ${file.absolutePath}")
-
-        val receiver = object : BroadcastReceiver() {
-            override fun onReceive(ctx: Context?, intent: Intent?) {
-                val recvId = intent?.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1) ?: -1
-                if (recvId != id) return
-                try {
-                    appCtx.unregisterReceiver(this)
-                } catch (_: IllegalArgumentException) {
-                    // 已注销，忽略
-                }
-                val cursor = dm.query(DownloadManager.Query().setFilterById(id))
-                cursor.use {
-                    if (it.moveToFirst()) {
-                        val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-                        if (status == DownloadManager.STATUS_SUCCESSFUL) {
-                            Log.d(TAG, "download complete -> install ${file.absolutePath}")
-                            installApk(appCtx, file)
-                        }
-                    }
-                }
-            }
-        }
-        ContextCompat.registerReceiver(
-            appCtx,
-            receiver,
-            IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE),
-            ContextCompat.RECEIVER_NOT_EXPORTED
-        )
         return id
+    }
+
+    /** 查询下载状态（DownloadManager.STATUS_*），未找到返回 -1。 */
+    fun getDownloadStatus(context: Context, id: Long): Int {
+        val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
+        val cursor = dm.query(DownloadManager.Query().setFilterById(id)) ?: return -1
+        cursor.use {
+            if (!it.moveToFirst()) return -1
+            return it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
+        }
     }
 
     /** 查询下载进度，返回 0f~1f；无法获取时返回 -1f。 */
@@ -179,6 +158,7 @@ object AppUpdater {
     /** 通过 FileProvider 调起系统安装界面。 */
     fun installApk(context: Context, file: File) {
         val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+        Log.d(TAG, "install apk via FileProvider: $uri")
         val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
             data = uri
             flags = Intent.FLAG_GRANT_READ_URI_PERMISSION

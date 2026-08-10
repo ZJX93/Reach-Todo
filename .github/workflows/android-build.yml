@@ -50,7 +50,14 @@ jobs:
           fi
 
       - name: Build with Gradle (assembleDebug)
-        run: ./gradlew assembleDebug --no-daemon
+        run: |
+          VERSION_INPUT="${{ github.event.inputs.version }}"
+          [ -z "$VERSION_INPUT" ] && VERSION_INPUT="Reach-Todo.APP-v0.0.1"
+          ANDROID_VERSION=$(echo "$VERSION_INPUT" | sed -n 's/.*\(v[0-9]\+\.[0-9]\+\.[0-9]\+\).*/\1/p')
+          [ -z "$ANDROID_VERSION" ] && ANDROID_VERSION="v0.0.1"
+          IFS='.' read -r MAJ MIN PAT <<< "${ANDROID_VERSION#v}"
+          VERSION_CODE=$(( MAJ*10000 + MIN*100 + PAT ))
+          ./gradlew assembleDebug --no-daemon -PappVersionName="${ANDROID_VERSION#v}" -PappVersionCode="$VERSION_CODE"
 
       - name: Decide versions and rename APK
         id: ver
