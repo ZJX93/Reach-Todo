@@ -12,8 +12,8 @@ android {
         applicationId = "com.zjx93.reach"
         minSdk = 26
         targetSdk = 34
-        versionCode = 1
-        versionName = "0.1.0"
+        versionCode = 7
+        versionName = "0.0.7"
         vectorDrawables { useSupportLibrary = true }
     }
 
@@ -35,6 +35,7 @@ android {
 
     buildFeatures {
         compose = true
+        buildConfig = true
     }
 
     composeOptions {
