@@ -42,9 +42,9 @@ jobs:
 
       - name: Generate fixed debug keystore (deterministic signature across builds)
         run: |
-          if [ ! -f android/debug.keystore ]; then
+          if [ ! -f debug.keystore ]; then
             keytool -genkeypair -v \
-              -keystore android/debug.keystore \
+              -keystore debug.keystore \
               -alias androiddebugkey \
               -keyalg RSA -keysize 2048 -validity 10000 \
               -storepass android -keypass android \
