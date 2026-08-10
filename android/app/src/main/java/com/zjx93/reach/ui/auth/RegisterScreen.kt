@@ -2,6 +2,7 @@ package com.zjx93.reach.ui.auth
 
 import com.zjx93.reach.R
 import androidx.compose.foundation.background
+import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -17,7 +18,6 @@ import androidx.navigation.NavHostController
 import com.zjx93.reach.data.local.UserPrefs
 import kotlinx.coroutines.launch
 import com.zjx93.reach.ui.nav.Routes
-import com.zjx93.reach.ui.theme.BrandGradient
 import com.zjx93.reach.viewmodel.AuthViewModel
 
 @Composable
@@ -42,18 +42,20 @@ fun RegisterScreen(nav: NavHostController) {
     Column(
         modifier = Modifier
             .fillMaxSize()
-            .background(BrandGradient)
+            .background(MaterialTheme.colorScheme.background)
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
         Spacer(Modifier.height(72.dp))
-        Text("创建账号", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onPrimary)
+        Text("创建账号", style = MaterialTheme.typography.headlineMedium, color = MaterialTheme.colorScheme.onBackground)
+        Text("让每一天都有迹可循", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
         Spacer(Modifier.height(32.dp))
 
         Surface(
             modifier = Modifier.fillMaxWidth(),
             shape = MaterialTheme.shapes.large,
-            tonalElevation = 4.dp,
+            tonalElevation = 0.dp,
+            border = BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
         ) {
             Column(modifier = Modifier.padding(20.dp)) {
                 OutlinedTextField(
