@@ -121,27 +121,56 @@ private fun UpdateSection() {
         }
     }
 
-    // 轮询下载进度；下载完成后（进度不可获取）据状态触发安装或报错
+    // 进入页面时恢复上次未完成的下载（断点续传 / 补装），脱离界面销毁影响
+    LaunchedEffect(Unit) {
+        AppUpdater.restoreActive(context)
+        val act = AppUpdater.getActive() ?: return@LaunchedEffect
+        when (AppUpdater.getDownloadStatus(context, act.first)) {
+            DownloadManager.STATUS_PENDING, DownloadManager.STATUS_RUNNING, DownloadManager.STATUS_PAUSED -> {
+                // 系统暂停的下载会由其自动恢复；这里仅续接进度显示，不重新排队
+                downloadId = act.first
+                downloading = true
+                progress = 0f
+            }
+            DownloadManager.STATUS_SUCCESSFUL -> {
+                // 上次离开时已下载完（完成广播可能因进程被杀丢失），这里补装
+                AppUpdater.installApk(context, AppUpdater.updateFile(context))
+                AppUpdater.clearActive(context)
+            }
+            else -> AppUpdater.clearActive(context)
+        }
+    }
+
+    // 轮询下载状态：PAUSED 自动恢复并继续；SUCCESSFUL 由 APP 级广播接收器负责安装；
+    // FAILED 展示错误；PENDING/RUNNING 更新进度。
     LaunchedEffect(downloading) {
         if (!downloading || downloadId < 0) return@LaunchedEffect
         while (true) {
-            val p = AppUpdater.queryProgress(context, downloadId)
-            if (p >= 0f) {
-                progress = p
-                delay(400)
-                continue
-            }
-            // 进度不可获取 => 下载已结束（成功/失败/暂停）
             when (AppUpdater.getDownloadStatus(context, downloadId)) {
                 DownloadManager.STATUS_SUCCESSFUL -> {
-                    AppUpdater.installApk(context, AppUpdater.updateFile(context))
+                    // 安装由 DownloadCompleteReceiver 触发；这里仅结束轮询
+                    downloading = false
+                    break
                 }
                 DownloadManager.STATUS_FAILED -> {
                     error = "下载失败，请点击升级重试"
+                    AppUpdater.clearActive(context)
+                    downloading = false
+                    break
+                }
+                DownloadManager.STATUS_PAUSED -> {
+                    // 系统暂停（网络切换/计费网络/后台等）；由系统自动恢复，这里继续等待，绝不中途退出
+                    delay(1000)
+                    continue
+                }
+                else -> {
+                    // PENDING / RUNNING：刷新进度（PAUSED 也返回当前比例，但上面已优先 resume）
+                    val p = AppUpdater.queryProgress(context, downloadId)
+                    if (p >= 0f) progress = p
+                    delay(400)
+                    continue
                 }
             }
-            downloading = false
-            break
         }
     }
 
@@ -185,7 +214,7 @@ private fun UpdateSection() {
                     }
                     downloading = true
                     progress = 0f
-                    downloadId = AppUpdater.downloadAndInstall(context, rel.apkUrl)
+                    downloadId = AppUpdater.startOrResume(context, rel.apkUrl, rel.version)
                 }, modifier = Modifier.fillMaxWidth()) {
                     Text("升级到 v${latest!!.version}")
                 }

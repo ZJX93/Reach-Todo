@@ -2,8 +2,11 @@ package com.zjx93.reach.util
 
 import android.app.DownloadManager
 import android.app.PendingIntent
+import android.content.BroadcastReceiver
 import android.content.Context
+import android.content.Context.RECEIVER_NOT_EXPORTED
 import android.content.Intent
+import android.content.IntentFilter
 import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
@@ -26,6 +29,11 @@ import java.io.File
  *
  * 走系统下载器（而非 OkHttp 直写）的好处：自带通知/进度、断点续传、后台下载，
  * 且无需额外存储权限（下载到 app 私有外部目录）。
+ *
+ * 关键修复（针对「下到一半退出 / 不能连续下载」）：
+ * - 同一 URL 的下载可复用（断点续传）：再次点击不会删除已下部分从头重来；
+ * - 系统将下载 PAUSED 时自动 resume 并继续轮询，不再把暂停误判为「退出」；
+ * - 下载完成通过 APP 级广播接收器触发安装，脱离设置页 UI 生命周期。
  */
 object AppUpdater {
     private const val TAG = "AppUpdater"
@@ -34,6 +42,17 @@ object AppUpdater {
     const val FILE_PROVIDER_AUTHORITY = "com.zjx93.reach.fileprovider"
     private const val APK_FILE_NAME = "reach-update.apk"
     private const val ACTION_INSTALL_STATUS = "com.zjx93.reach.action.INSTALL_STATUS"
+
+    /** 活跃下载的持久化（跨界面 / 进程重启）。用独立 SharedPreferences，便于非 suspend 的广播接收器读写。 */
+    private const val PREFS = "reach_update"
+    private const val K_ID = "dl_id"
+    private const val K_URL = "dl_url"
+    private const val K_VERSION = "dl_version"
+
+    // 内存中的活跃下载记录（进程内快速判断，避免每次都读 SP）
+    private var activeId: Long = -1L
+    private var activeUrl: String? = null
+    private var activeVersion: String? = null
 
     data class ReleaseInfo(
         val version: String,   // 去掉前缀后的语义化版本，如 "0.0.7"
@@ -109,17 +128,81 @@ object AppUpdater {
     fun updateFile(context: Context): File =
         File(context.getExternalFilesDir(Environment.DIRECTORY_DOWNLOADS), APK_FILE_NAME)
 
-    /**
-     * 用 DownloadManager 下载 APK，完成后自动调起安装。
-     * 返回 DownloadManager 的下载 id，可配合 [queryProgress] 轮询进度。
-     * 进度/安装通过应用上下文的广播接收器处理，故不受界面销毁影响。
-     */
-    fun downloadAndInstall(context: Context, apkUrl: String): Long {
-        val appCtx = context.applicationContext
-        val file = updateFile(appCtx)
-        // 清除上一次残留，避免写入冲突
-        if (file.exists()) file.delete()
+    // ----------------------------------------------------------------------------
+    // 活跃下载的持久化与恢复
+    // ----------------------------------------------------------------------------
 
+    /** 进程启动时调用：从 SharedPreferences 恢复活跃下载记录，供广播接收器 / 界面续接使用。 */
+    fun restoreActive(context: Context) {
+        val sp = context.getSharedPreferences(PREFS, Context.MODE_PRIVATE)
+        val id = sp.getLong(K_ID, -1L)
+        val url = sp.getString(K_URL, null)
+        val ver = sp.getString(K_VERSION, null)
+        if (id >= 0 && url != null && ver != null) {
+            activeId = id
+            activeUrl = url
+            activeVersion = ver
+            Log.d(TAG, "restoreActive id=$id version=$ver")
+        }
+    }
+
+    private fun persistActive(context: Context) {
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().apply {
+            putLong(K_ID, activeId)
+            putString(K_URL, activeUrl)
+            putString(K_VERSION, activeVersion)
+            apply()
+        }
+    }
+
+    /** 清理活跃下载记录（下载完成安装后 / 失败 / 找不到时）。 */
+    fun clearActive(context: Context) {
+        activeId = -1L
+        activeUrl = null
+        activeVersion = null
+        context.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().apply {
+            remove(K_ID); remove(K_URL); remove(K_VERSION)
+            apply()
+        }
+    }
+
+    /** 当前是否有活跃下载。 */
+    fun isActive(): Boolean = activeId >= 0
+
+    /** 返回活跃下载 (id, url, version)；无则返回 null。供界面续接进度使用。 */
+    fun getActive(): Triple<Long, String, String>? =
+        if (activeId >= 0 && activeUrl != null && activeVersion != null)
+            Triple(activeId, activeUrl!!, activeVersion!!) else null
+
+    // ----------------------------------------------------------------------------
+    // 下载：开始 / 复用 / 恢复
+    // ----------------------------------------------------------------------------
+
+    /**
+     * 开始下载或复用已有的活跃下载（断点续传）。
+     * - 若已存在同一 url 的活跃下载（运行中 / 已暂停 / 排队中），直接复用其 id 并恢复（不删除已下部分、不重新排队）；
+     * - 否则删除残留文件、排队新下载，并记录为活跃下载。
+     * 返回 DownloadManager 的下载 id。
+     */
+    fun startOrResume(context: Context, apkUrl: String, version: String): Long {
+        val appCtx = context.applicationContext
+        // 复用同一 url 的活跃下载
+        if (activeId >= 0 && activeUrl == apkUrl) {
+            val st = getDownloadStatus(appCtx, activeId)
+            if (st == DownloadManager.STATUS_PENDING ||
+                st == DownloadManager.STATUS_RUNNING ||
+                st == DownloadManager.STATUS_PAUSED
+            ) {
+                // 系统暂停的下载会由其自动恢复，这里直接复用同一 id（不删已下部分、不重新排队）
+                Log.d(TAG, "reuse active download id=$activeId status=$st")
+                return activeId
+            }
+            // 状态异常（成功 / 失败 / 找不到），清理后重建
+            clearActive(appCtx)
+        }
+        // 新下载
+        val file = updateFile(appCtx)
+        if (file.exists()) file.delete()
         val dm = appCtx.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val req = DownloadManager.Request(Uri.parse(apkUrl)).apply {
             setTitle("抵达 Reach 更新")
@@ -129,6 +212,10 @@ object AppUpdater {
             setDestinationInExternalFilesDir(appCtx, Environment.DIRECTORY_DOWNLOADS, APK_FILE_NAME)
         }
         val id = dm.enqueue(req)
+        activeId = id
+        activeUrl = apkUrl
+        activeVersion = version
+        persistActive(appCtx)
         Log.d(TAG, "enqueue download id=$id url=$apkUrl -> ${file.absolutePath}")
         return id
     }
@@ -143,20 +230,27 @@ object AppUpdater {
         }
     }
 
-    /** 查询下载进度，返回 0f~1f；无法获取时返回 -1f。 */
+    /**
+     * 查询下载进度，返回 0f~1f；无法获取（找不到 / 失败）时返回 -1f。
+     * 注意：PAUSED 也返回当前已下比例（便于界面显示「已下到 X%」而非误判退出）。
+     */
     fun queryProgress(context: Context, id: Long): Float {
         val dm = context.getSystemService(Context.DOWNLOAD_SERVICE) as DownloadManager
         val cursor = dm.query(DownloadManager.Query().setFilterById(id)) ?: return -1f
         cursor.use {
             if (!it.moveToFirst()) return -1f
             val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
-            if (status != DownloadManager.STATUS_RUNNING && status != DownloadManager.STATUS_PENDING) return -1f
+            if (status == DownloadManager.STATUS_FAILED) return -1f
             val downloaded = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_BYTES_DOWNLOADED_SO_FAR))
             val total = it.getLong(it.getColumnIndexOrThrow(DownloadManager.COLUMN_TOTAL_SIZE_BYTES))
             if (total <= 0) return 0f
             return (downloaded.toFloat() / total.toFloat()).coerceIn(0f, 1f)
         }
     }
+
+    // ----------------------------------------------------------------------------
+    // 安装
+    // ----------------------------------------------------------------------------
 
     /**
      * 安装 APK。优先使用 PackageInstaller 会话（Android 5+ 通用、可靠），
@@ -207,6 +301,45 @@ object AppUpdater {
                 PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
             ).intentSender
             session.commit(sender)
+        }
+    }
+
+    // ----------------------------------------------------------------------------
+    // 下载完成广播接收器（APP 级，脱离 UI 生命周期）
+    // ----------------------------------------------------------------------------
+
+    /**
+     * 在 [ReachApplication.onCreate] 中注册。下载完成（无论设置页是否打开）即调起安装；
+     * 失败则清理活跃记录，由界面在打开时展示错误。
+     */
+    class DownloadCompleteReceiver : BroadcastReceiver() {
+        override fun onReceive(context: Context?, intent: Intent?) {
+            if (context == null || intent?.action != DownloadManager.ACTION_DOWNLOAD_COMPLETE) return
+            val id = intent.getLongExtra(DownloadManager.EXTRA_DOWNLOAD_ID, -1L)
+            if (id != activeId) return
+            val appCtx = context.applicationContext
+            when (getDownloadStatus(appCtx, id)) {
+                DownloadManager.STATUS_SUCCESSFUL -> {
+                    Log.d(TAG, "download complete, installing")
+                    installApk(appCtx, updateFile(appCtx))
+                    clearActive(appCtx)
+                }
+                else -> {
+                    Log.w(TAG, "download failed/unknown, clearing active")
+                    clearActive(appCtx)
+                }
+            }
+        }
+    }
+
+    /** 注册下载完成广播接收器（在 Application.onCreate 调用）。 */
+    fun registerReceiver(context: Context) {
+        val filter = IntentFilter(DownloadManager.ACTION_DOWNLOAD_COMPLETE)
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            context.registerReceiver(DownloadCompleteReceiver(), filter, RECEIVER_NOT_EXPORTED)
+        } else {
+            @Suppress("UnspecifiedRegisterReceiverFlag")
+            context.registerReceiver(DownloadCompleteReceiver(), filter)
         }
     }
 }
