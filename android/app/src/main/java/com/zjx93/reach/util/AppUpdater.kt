@@ -1,8 +1,10 @@
 package com.zjx93.reach.util
 
 import android.app.DownloadManager
+import android.app.PendingIntent
 import android.content.Context
 import android.content.Intent
+import android.content.pm.PackageInstaller
 import android.net.Uri
 import android.os.Build
 import android.os.Environment
@@ -20,7 +22,7 @@ import java.io.File
  * 应用内「一键升级」：
  * 1. 拉取 GitHub 最新 Release（tag 形如 Reach-Todo.APP-v0.0.7），解析语义化版本与 APK 下载地址；
  * 2. 与本地 versionName 做语义化比对，判断是否有更新；
- * 3. 有更新时通过系统 DownloadManager 下载 APK，下载完成后用 FileProvider 调起安装。
+ * 3. 有更新时通过系统 DownloadManager 下载 APK，下载完成后用 PackageInstaller 会话安装。
  *
  * 走系统下载器（而非 OkHttp 直写）的好处：自带通知/进度、断点续传、后台下载，
  * 且无需额外存储权限（下载到 app 私有外部目录）。
@@ -31,6 +33,7 @@ object AppUpdater {
     private const val RELEASES_LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     const val FILE_PROVIDER_AUTHORITY = "com.zjx93.reach.fileprovider"
     private const val APK_FILE_NAME = "reach-update.apk"
+    private const val ACTION_INSTALL_STATUS = "com.zjx93.reach.action.INSTALL_STATUS"
 
     data class ReleaseInfo(
         val version: String,   // 去掉前缀后的语义化版本，如 "0.0.7"
@@ -155,15 +158,55 @@ object AppUpdater {
         }
     }
 
-    /** 通过 FileProvider 调起系统安装界面。 */
+    /**
+     * 安装 APK。优先使用 PackageInstaller 会话（Android 5+ 通用、可靠），
+     * 直接把文件字节流写入安装会话，无需经 FileProvider 暴露 content://，
+     * 规避部分系统/模拟器对 ACTION_INSTALL_PACKAGE + content URI 的兼容问题。
+     * 旧系统回退到 ACTION_INSTALL_PACKAGE。
+     */
     fun installApk(context: Context, file: File) {
+        Log.d(TAG, "install apk: ${file.absolutePath} size=${file.length()}")
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
+            try {
+                installViaSession(context, file)
+                return
+            } catch (e: Exception) {
+                Log.w(TAG, "PackageInstaller session failed, fallback to intent", e)
+            }
+        }
+        // 兜底：旧系统走 ACTION_INSTALL_PACKAGE（仍依赖 FileProvider）
         val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
-        Log.d(TAG, "install apk via FileProvider: $uri")
         val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
             data = uri
             flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
             addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
         }
         context.startActivity(intent)
+    }
+
+    /** 通过 PackageInstaller 会话写入并提交流安装（最小 SDK 26，API 21 符号均可用）。 */
+    private fun installViaSession(context: Context, file: File) {
+        val installer = context.packageManager.packageInstaller
+        val params = PackageInstaller.SessionParams(PackageInstaller.SessionParams.MODE_FULL_INSTALL)
+        // 关联到本包，使系统将其识别为「自我更新」并弹出安装确认
+        try {
+            params.setAppPackageName(context.packageName)
+        } catch (_: Exception) { /* 部分系统不允许，忽略后仍能提交 */ }
+        val sessionId = installer.createSession(params)
+        installer.openSession(sessionId).use { session ->
+            file.inputStream().use { input ->
+                session.openWrite("reach-update", 0, file.length()).use { out ->
+                    input.copyTo(out)
+                    session.fsync(out)
+                }
+            }
+            // 提交后系统会自行弹出安装确认界面并完成安装
+            val statusIntent = Intent(ACTION_INSTALL_STATUS)
+            val sender = PendingIntent.getBroadcast(
+                context, 0, statusIntent,
+                PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+            ).intentSender
+            session.commit(sender)
+        }
     }
 }
