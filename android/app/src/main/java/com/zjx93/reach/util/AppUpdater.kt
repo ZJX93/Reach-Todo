@@ -9,6 +9,7 @@ import android.net.Uri
 import android.os.Build
 import android.os.Environment
 import android.provider.Settings
+import android.util.Log
 import androidx.core.content.ContextCompat
 import androidx.core.content.FileProvider
 import kotlinx.coroutines.Dispatchers
@@ -28,6 +29,7 @@ import java.io.File
  * 且无需额外存储权限（下载到 app 私有外部目录）。
  */
 object AppUpdater {
+    private const val TAG = "AppUpdater"
     private const val REPO = "ZJX93/Reach-Todo"
     private const val RELEASES_LATEST = "https://api.github.com/repos/$REPO/releases/latest"
     const val FILE_PROVIDER_AUTHORITY = "com.zjx93.reach.fileprovider"
@@ -67,6 +69,8 @@ object AppUpdater {
                 }
             }
             ReleaseInfo(version, tagName, apkUrl, apkName)
+        }.also {
+            Log.d(TAG, "fetchLatest tag=$tagName version=${it.version} hasApk=${it.apkUrl != null}")
         }
     }
 
@@ -125,6 +129,7 @@ object AppUpdater {
             setDestinationInExternalFilesDir(appCtx, Environment.DIRECTORY_DOWNLOADS, APK_FILE_NAME)
         }
         val id = dm.enqueue(req)
+        Log.d(TAG, "enqueue download id=$id url=$apkUrl -> ${file.absolutePath}")
 
         val receiver = object : BroadcastReceiver() {
             override fun onReceive(ctx: Context?, intent: Intent?) {
@@ -140,6 +145,7 @@ object AppUpdater {
                     if (it.moveToFirst()) {
                         val status = it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
                         if (status == DownloadManager.STATUS_SUCCESSFUL) {
+                            Log.d(TAG, "download complete -> install ${file.absolutePath}")
                             installApk(appCtx, file)
                         }
                     }
