@@ -18,8 +18,13 @@ object Session {
         set(v) = _token.set(v)
 
     fun bootstrap() {
-        // 应用启动时从持久化层同步读取一次（短暂阻塞可接受）
-        token = runBlocking { UserPrefs.tokenFlow.first() }
+        // 应用启动时从持久化层同步读取一次；任何异常都降级为「未登录」，绝不阻断启动
+        token = try {
+            runBlocking { UserPrefs.tokenFlow.first() }
+        } catch (e: Exception) {
+            android.util.Log.w("Session", "读取本地令牌失败，已降级为未登录", e)
+            ""
+        }
     }
 }
 
@@ -46,7 +51,9 @@ object RetrofitClient {
 
     /** 按当前服务器地址取 ApiService；地址变化时才重建 Retrofit。 */
     fun api(serverUrl: String): ApiService {
-        val url = if (serverUrl.endsWith("/")) serverUrl else "$serverUrl/"
+        // 空白地址降级到默认后端，避免 Retrofit baseUrl("") 抛 IllegalArgumentException 导致崩溃
+        val clean = if (serverUrl.isBlank()) "http://192.168.9.3:8000" else serverUrl
+        val url = if (clean.endsWith("/")) clean else "$clean/"
         synchronized(this) {
             if (url != baseUrl || apiService == null) {
                 baseUrl = url
