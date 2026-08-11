@@ -87,7 +87,7 @@ class ReachRepository {
     suspend fun deleteGoal(id: Int): Result<Unit> = run { it.deleteGoal(id) }
 
     // ---------------- 记录 ----------------
-    suspend fun records(): Result<List<RecordOut>> = run { it.records() }
+    suspend fun records(date: String? = null): Result<List<RecordOut>> = run { it.records(date) }
     suspend fun recordsCalendar(year: Int, month: Int): Result<List<CalendarDay>> =
         run { it.recordsCalendar(year, month) }
 

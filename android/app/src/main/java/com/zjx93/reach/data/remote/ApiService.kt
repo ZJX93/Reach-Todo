@@ -60,7 +60,7 @@ interface ApiService {
 
     // ---------------- 记录 ----------------
     @GET("/api/records")
-    suspend fun records(): List<RecordOut>
+    suspend fun records(@Query("date") date: String? = null): List<RecordOut>
 
     @GET("/api/records/calendar")
     suspend fun recordsCalendar(
