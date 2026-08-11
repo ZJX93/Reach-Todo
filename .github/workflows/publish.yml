@@ -46,12 +46,17 @@ jobs:
           password: ${{ secrets.GITHUB_TOKEN }}
 
       # 版本来源：手动输入 > Android 发版标签(Reach-Todo.APP-vX.Y.Z) 提取
+      # 注意：release 事件触发时 GITHUB_REF 是默认分支(refs/heads/main)而非 tag，
+      #       必须从 github.event.release.tag_name 取版本，否则会自动发版漏打版本标签。
       - name: Derive version
         id: ver
         run: |
           VERSION=""
           if [ -n "${{ github.event.inputs.version }}" ]; then
             VERSION="${{ github.event.inputs.version }}"
+          elif [ "${{ github.event_name }}" = "release" ]; then
+            TAG="${{ github.event.release.tag_name }}"
+            VERSION="${TAG#Reach-Todo.APP-v}"
           elif [[ "${GITHUB_REF}" == refs/tags/Reach-Todo.APP-v* ]]; then
             VERSION="${GITHUB_REF#refs/tags/Reach-Todo.APP-v}"
           fi
