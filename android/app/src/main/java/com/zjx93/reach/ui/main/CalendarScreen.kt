@@ -25,15 +25,13 @@ import com.zjx93.reach.data.model.LunarInfo
 import com.zjx93.reach.data.repository.ReachRepository
 import com.zjx93.reach.ui.nav.Routes
 import com.zjx93.reach.util.buildMonthGrid
+import com.zjx93.reach.util.computeLunar
 import com.zjx93.reach.util.currentYearMonth
 import com.zjx93.reach.util.todayYmd
 import com.zjx93.reach.util.weekdayHeader
-import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.coroutineScope
 import java.time.DayOfWeek
 import java.time.LocalDate
-import java.util.concurrent.atomic.AtomicInteger
 
 // 记录/任务小点配色，与 web/src/pages/recordMeta.js、CalendarGrid.jsx 保持一致
 private val DIARY_COLOR = Color(0xFF14B8A6)   // 个人日记
@@ -65,8 +63,7 @@ fun CalendarScreen(nav: NavHostController) {
     var holidays by remember { mutableStateOf<Map<String, HolidayInfo>>(emptyMap()) }
     // 记录/任务按日聚合（与 web /records/calendar 对齐）
     var calendarDays by remember { mutableStateOf<Map<String, CalendarDay>>(emptyMap()) }
-    // 农历按日缓存（屏幕级），避免跨月重复拉取
-    val lunarCache = remember { mutableMapOf<String, LunarInfo?>() }
+    // 农历由 computeLunar 离线计算（见 LaunchedEffect）
     var lunarMap by remember { mutableStateOf<Map<String, LunarInfo?>>(emptyMap()) }
 
     LaunchedEffect(year) {
@@ -74,31 +71,17 @@ fun CalendarScreen(nav: NavHostController) {
     }
 
     LaunchedEffect(year, month) {
-        // 1) 记录/任务聚合
+        // 1) 记录/任务聚合（仍走后端，离线时降级为空）
         launch {
             repo.recordsCalendar(year, month).onSuccess { list ->
                 calendarDays = list.associateBy { it.date }
             }
         }
-        // 2) 农历/节气/节日：与 web 一致逐日拉取（服务端有缓存），限并发避免抖动
+        // 2) 农历/节气/节日：离线计算，不依赖后端 /api/lunar
         val dates = buildMonthGrid(year, month, settings.weekStart != "mon")
             .mapNotNull { it?.toString() }
         val result = mutableMapOf<String, LunarInfo?>()
-        coroutineScope {
-            val idx = AtomicInteger(0)
-            val workers = List(4) {
-                launch(Dispatchers.IO) {
-                    while (true) {
-                        val cur = idx.getAndIncrement()
-                        if (cur >= dates.size) break
-                        val ds = dates[cur]
-                        val info = lunarCache[ds] ?: repo.lunar(ds).getOrNull()?.also { lunarCache[ds] = it }
-                        result[ds] = info
-                    }
-                }
-            }
-            workers.forEach { it.join() }
-        }
+        for (ds in dates) result[ds] = computeLunar(ds)
         lunarMap = result
     }
 

@@ -26,6 +26,7 @@ import com.zjx93.reach.data.model.RecordOut
 import com.zjx93.reach.data.model.TaskOut
 import com.zjx93.reach.data.repository.ReachRepository
 import com.zjx93.reach.ui.nav.Routes
+import com.zjx93.reach.util.computeLunar
 import com.zjx93.reach.util.daysWeekText
 import com.zjx93.reach.util.ganzhiYearText
 import com.zjx93.reach.util.godPositions
@@ -52,6 +53,8 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
     var dueTasks by remember { mutableStateOf<List<TaskOut>>(emptyList()) }
 
     LaunchedEffect(date) {
+        // 离线先渲染农历框架；联网后由后端 /api/lunar 补齐宜忌/神位/物候
+        lunar = computeLunar(date)
         scope.launch { repo.lunar(date).onSuccess { lunar = it } }
         scope.launch { repo.holidays(date.substring(0, 4).toInt()).onSuccess { holiday = it[date] } }
         scope.launch { repo.records(date).onSuccess { records = it } }
