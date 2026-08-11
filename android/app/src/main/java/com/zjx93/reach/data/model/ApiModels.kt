@@ -241,7 +241,20 @@ data class LunarInfo(
     val jieri: String? = null,
     val nnian: String? = null,
     @SerializedName("YEARGANZHI") val yearGanzhi: String? = null,
-    val shengxiao: String? = null,
+    val shengxiao: String? = null,   // 生肖（备用）
+    @SerializedName("DAYSHENGXIAO") val dayShengxiao: String? = null, // 日生肖
+    @SerializedName("xingzuo") val xingzuo: String? = null,  // 星座
+    @SerializedName("yi") val yi: String? = null,            // 宜（| 分隔）
+    @SerializedName("ji") val ji: String? = null,            // 忌（| 分隔）
+    @SerializedName("YUEXIANG") val yuexiang: String? = null, // 月相
+    @SerializedName("WUHOU") val wuhou: String? = null,      // 物候，如 "寒露 初候鸿雁来宾"
+    @SerializedName("DAYPOSITIONXI") val xi: String? = null, // 喜神位
+    @SerializedName("DAYPOSITIONYANGGUI") val yanggui: String? = null, // 阳贵位
+    @SerializedName("DAYPOSITIONYINGUI") val yingui: String? = null,   // 阴贵位
+    @SerializedName("DAYPOSITIONFU") val fu: String? = null,  // 福神位
+    @SerializedName("DAYPOSITIONCAI") val cai: String? = null, // 财神位
+    @SerializedName("DAYSINYEAR") val daysInYear: String? = null, // 本年第几天
+    @SerializedName("YLWEEKNOY") val weekOfYear: String? = null,   // 本年第几周
 )
 
 data class HolidayInfo(

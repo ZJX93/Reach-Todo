@@ -90,8 +90,8 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
                     if (badges.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Row(modifier = Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.Center) {
-                            badges.forEach { (text, bg, fg) ->
-                                LunarBadge(text, bg, fg)
+                            for (b in badges) {
+                                LunarBadge(b.first, b.second, b.third)
                                 Spacer(Modifier.width(8.dp))
                             }
                         }
@@ -114,12 +114,12 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
                     if (yuexiang != null || wuhou != null) {
                         Spacer(Modifier.height(10.dp))
                         Row(modifier = Modifier.horizontalScroll(rememberScrollState())) {
-                            yuexiang?.let {
-                                LunarBadge("月相 $it", Color(0xFFF3E8FF), Color(0xFF9333EA))
+                            if (yuexiang != null) {
+                                LunarBadge("月相 $yuexiang", Color(0xFFF3E8FF), Color(0xFF9333EA))
                                 Spacer(Modifier.width(8.dp))
                             }
-                            wuhou?.let {
-                                LunarBadge("物候 $it", Color(0xFFEEF2FF), Color(0xFF4F46E5))
+                            if (wuhou != null) {
+                                LunarBadge("物候 $wuhou", Color(0xFFEEF2FF), Color(0xFF4F46E5))
                                 Spacer(Modifier.width(8.dp))
                             }
                         }
@@ -130,10 +130,10 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
                     if (gods.isNotEmpty()) {
                         Spacer(Modifier.height(12.dp))
                         Column(modifier = Modifier.fillMaxWidth().padding(horizontal = 4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                            gods.forEach { (label, value) ->
+                            for (g in gods) {
                                 Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
-                                    Text(label, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-                                    Text(value, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
+                                    Text(g.first, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+                                    Text(g.second, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurface)
                                 }
                             }
                         }
@@ -146,7 +146,7 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
             // ===== 待办到期 =====
             Text("待办到期（${dueTasks.size}）", style = MaterialTheme.typography.titleSmall)
             if (dueTasks.isEmpty()) Text("无", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-            dueTasks.forEach { t ->
+            for (t in dueTasks) {
                 Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { nav.navigate("${Routes.TASK_EDIT}?id=${t.id}") }, shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Text(t.title, modifier = Modifier.padding(12.dp), style = MaterialTheme.typography.titleMedium)
                 }
@@ -157,7 +157,7 @@ fun DayDetailScreen(nav: NavHostController, date: String?) {
             // ===== 记录 =====
             Text("记录（${records.size}）", style = MaterialTheme.typography.titleSmall)
             if (records.isEmpty()) Text("无", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
-            records.forEach { r ->
+            for (r in records) {
                 Card(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp).clickable { nav.navigate("${Routes.RECORD_EDIT}?id=${r.id}") }, shape = RoundedCornerShape(12.dp), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceVariant)) {
                     Column(modifier = Modifier.padding(12.dp)) {
                         Text(r.title.ifBlank { "(无标题)" }, style = MaterialTheme.typography.titleMedium)
