@@ -15,13 +15,19 @@ import androidx.compose.ui.Alignment
 import android.app.DownloadManager
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalLifecycleOwner
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.LifecycleEventObserver
 import androidx.navigation.NavHostController
 import com.zjx93.reach.BuildConfig
 import com.zjx93.reach.data.local.UserPrefs
 import com.zjx93.reach.util.AppUpdater
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import android.content.BroadcastReceiver
+import android.content.Intent
+import android.content.IntentFilter
 import java.text.SimpleDateFormat
 import java.util.*
 
@@ -96,20 +102,66 @@ fun SettingsScreen(nav: NavHostController) {
 @Composable
 private fun UpdateSection() {
     val context = LocalContext.current
+    val lifecycleOwner = LocalLifecycleOwner.current
     val scope = rememberCoroutineScope()
     val currentVersion = remember { BuildConfig.VERSION_NAME }
 
     var checking by remember { mutableStateOf(false) }
     var latest by remember { mutableStateOf<AppUpdater.ReleaseInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
+    var info by remember { mutableStateOf<String?>(null) }
     var downloading by remember { mutableStateOf(false) }
     var installing by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
     var downloadId by remember { mutableStateOf(-1L) }
+    // 调起安装的时间戳：用于超时判定「用户回到 APP 但安装未成功」（安装器失败/取消）
+    var installTriggeredAt by remember { mutableStateOf(0L) }
 
     fun showInstallError() {
         error = "下载完成，但未能调起安装。请检查是否允许安装未知应用，或点击重试。"
         installing = false
+    }
+
+    // 安装成功确认：系统广播 ACTION_PACKAGE_ADDED，匹配自身包名即代表覆盖安装完成
+    DisposableEffect(Unit) {
+        val receiver = object : BroadcastReceiver() {
+            override fun onReceive(c: Context?, intent: Intent?) {
+                if (intent?.action == Intent.ACTION_PACKAGE_ADDED) {
+                    val pkg = intent.data?.schemeSpecificPart
+                    if (pkg == context.packageName) {
+                        installing = false
+                        downloading = false
+                        error = null
+                        AppUpdater.clearActive(context)
+                        AppUpdater.resetInstallTrigger(downloadId)
+                        // 覆盖安装后应用会被替换，提示用户重新打开以加载新版本
+                        info = "更新已完成，请重新打开应用以生效。"
+                    }
+                }
+            }
+        }
+        val filter = IntentFilter(Intent.ACTION_PACKAGE_ADDED).apply { addDataScheme("package") }
+        context.registerReceiver(receiver, filter)
+        onDispose { context.unregisterReceiver(receiver) }
+    }
+
+    // 回到 APP 时探测：若 installing 卡住超过阈值，说明安装器未成功（用户取消 / 解析失败 / 签名冲突）
+    DisposableEffect(lifecycleOwner) {
+        val obs = LifecycleEventObserver { _, event ->
+            if (event == Lifecycle.Event.ON_RESUME && installing) {
+                val elapsed = System.currentTimeMillis() - installTriggeredAt
+                if (elapsed > 6000) {
+                    installing = false
+                    downloading = false
+                    error = null
+                    AppUpdater.clearActive(context)
+                    AppUpdater.resetInstallTrigger(downloadId)
+                    error = "安装未完成。若系统提示「解析失败」或「签名冲突」，说明旧版本与更新包签名不同，请先卸载旧版再安装（卸载不会删除你的账号，但本地缓存会清空），之后即可平滑升级。"
+                }
+            }
+        }
+        lifecycleOwner.lifecycle.addObserver(obs)
+        onDispose { lifecycleOwner.lifecycle.removeObserver(obs) }
     }
 
     fun doCheck() {
@@ -139,13 +191,11 @@ private fun UpdateSection() {
                 progress = 0f
             }
             DownloadManager.STATUS_SUCCESSFUL -> {
-                // 上次离开时已下载完（完成广播可能因进程被杀丢失），这里前台补装
+                // 上次离开时已下载完：前台补装，但不立即 clearActive，交由 PACKAGE_ADDED / 超时 兜底
+                downloading = false
                 installing = true
-                if (AppUpdater.finishDownload(context, act.first)) {
-                    AppUpdater.clearActive(context)
-                } else {
-                    showInstallError()
-                }
+                installTriggeredAt = System.currentTimeMillis()
+                AppUpdater.finishDownload(context, act.first)
             }
             else -> AppUpdater.clearActive(context)
         }
@@ -158,21 +208,18 @@ private fun UpdateSection() {
         while (true) {
             when (AppUpdater.getDownloadStatus(context, downloadId)) {
                 DownloadManager.STATUS_SUCCESSFUL -> {
-                    // 前台（带 Activity 上下文）直接触发安装，确保 app 内可完成更新；
-                    // 即便后台广播丢失也能装上，且 finishDownload 幂等不会重复弹窗
+                    // 前台（带 Activity 上下文）触发安装；不立即 clearActive，
+                    // 安装成功由 PACKAGE_ADDED 确认，失败/取消由回到 APP 超时复位
                     downloading = false
                     installing = true
-                    val ok = AppUpdater.finishDownload(context, downloadId)
-                    if (ok) {
-                        AppUpdater.clearActive(context)
-                    } else {
-                        showInstallError()
-                    }
+                    installTriggeredAt = System.currentTimeMillis()
+                    AppUpdater.finishDownload(context, downloadId)
                     break
                 }
                 DownloadManager.STATUS_FAILED -> {
                     error = "下载失败，请点击升级重试"
                     AppUpdater.clearActive(context)
+                    AppUpdater.resetInstallTrigger(downloadId)
                     downloading = false
                     break
                 }
@@ -222,6 +269,11 @@ private fun UpdateSection() {
                 }
                 Spacer(Modifier.height(8.dp))
                 Text("请按系统弹出的安装提示完成更新。若未弹出，请检查「安装未知应用」权限。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
+            info != null -> {
+                Text(info!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.primary)
+                Spacer(Modifier.height(8.dp))
+                Button(onClick = { info = null; doCheck() }, modifier = Modifier.fillMaxWidth()) { Text("刷新状态") }
             }
             error != null -> {
                 Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)

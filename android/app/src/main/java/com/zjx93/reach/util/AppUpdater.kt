@@ -54,9 +54,14 @@ object AppUpdater {
     private var activeUrl: String? = null
     private var activeVersion: String? = null
 
-    /** 已触发安装的下载 id 集合（幂等守卫）：避免「设置页轮询」与「后台广播 / 启动补装」对同一完成下载重复弹安装。
-     *  每次 startOrResume 开启新一轮下载尝试时清空，以便用户取消安装后可重新点击重试。 */
-    private val installedIds = mutableSetOf<Long>()
+    /** 已调起安装（防重复弹窗）的下载 id 集合。仅代表「已尝试调起安装器」，不代表安装成功。
+     *  安装成功由 PACKAGE_ADDED 广播确认，失败/取消由界面超时复位；两者都会移除该 id，允许重试。 */
+    private val triggeredIds = mutableSetOf<Long>()
+
+    /** 移除已调起标记，允许对同一下载重新调起安装（用于安装失败 / 取消后重试）。 */
+    fun resetInstallTrigger(id: Long) {
+        triggeredIds.remove(id)
+    }
 
     data class ReleaseInfo(
         val version: String,   // 去掉前缀后的语义化版本，如 "0.0.7"
@@ -190,8 +195,8 @@ object AppUpdater {
      */
     fun startOrResume(context: Context, apkUrl: String, version: String): Long {
         val appCtx = context.applicationContext
-        // 新一轮「开始 / 恢复」尝试：清空安装幂等守卫，允许本次重新触发安装（含用户此前取消安装后重试）
-        installedIds.clear()
+        // 新一轮「开始 / 恢复」尝试：清空已调起守卫，允许本次重新触发安装（含用户此前取消安装后重试）
+        triggeredIds.clear()
         // 复用同一 url 的活跃下载
         if (activeId >= 0 && activeUrl == apkUrl) {
             val st = getDownloadStatus(appCtx, activeId)
@@ -248,15 +253,20 @@ object AppUpdater {
     }
 
     /**
-     * 下载完成后触发安装（幂等）：同一下载 id 只会真正调起一次安装。
-     * 前台（设置页轮询，带 Activity 上下文，最可靠）与后台（广播接收器 / Application 启动补装）都会调用，
-     * 靠 [installedIds] 去重，避免重复弹出安装确认。
-     * 文件不存在或为空时跳过（可能尚未落盘，交由轮询下一轮重试）。
-     * @return true 表示成功调起安装；false 表示失败，调用方应保留 active 供用户重试。
+     * 下载完成后触发安装：同一下载 id 只会真正调起一次安装器（靠 [triggeredIds] 去重，
+     * 避免设置页轮询与后台广播重复弹安装界面）。
+     *
+     * 注意：ACTION_VIEW 启动安装器是异步的，startActivity 成功仅代表「已尝试调起」，并不代表安装成功
+     * （安装器后续可能因签名冲突 / 解析失败 / 用户取消而失败，这些是系统层、拿不到异常）。
+     * 因此这里 **不** 立刻清理 active / 标记最终成功，而把最终确认交给调用方：
+     * - 成功 → 由 PACKAGE_ADDED 广播确认后 clearActive；
+     * - 失败 / 取消 → 由界面超时复位后 clearActive 并允许重试。
+     *
+     * @return true 表示已成功调起安装界面（或可重试）；false 表示文件未就绪，调用方应保留 active 供下一轮重试。
      */
     fun finishDownload(context: Context, id: Long): Boolean {
-        if (installedIds.contains(id)) {
-            Log.d(TAG, "install already triggered for id=$id, skip")
+        if (triggeredIds.contains(id)) {
+            Log.d(TAG, "install already triggered for id=$id, skip duplicate")
             return true
         }
         val file = updateFile(context)
@@ -266,7 +276,7 @@ object AppUpdater {
         }
         val ok = installApk(context, file)
         if (ok) {
-            installedIds.add(id)
+            triggeredIds.add(id)
             Log.d(TAG, "finishDownload install triggered id=$id size=${file.length()}")
         } else {
             Log.w(TAG, "finishDownload failed to trigger install id=$id")
