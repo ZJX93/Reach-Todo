@@ -65,6 +65,8 @@ fun CalendarScreen(nav: NavHostController) {
     var calendarDays by remember { mutableStateOf<Map<String, CalendarDay>>(emptyMap()) }
     // 农历由 computeLunar 离线计算（见 LaunchedEffect）
     var lunarMap by remember { mutableStateOf<Map<String, LunarInfo?>>(emptyMap()) }
+    // 连接异常提示（避免静默失败导致用户不知道小点为何没显示）
+    val snackbarHost = remember { SnackbarHostState() }
 
     LaunchedEffect(year) {
         scope.launch { repo.holidays(year).onSuccess { holidays = it }.onFailure { } }
@@ -75,6 +77,11 @@ fun CalendarScreen(nav: NavHostController) {
         launch {
             repo.recordsCalendar(year, month).onSuccess { list ->
                 calendarDays = list.associateBy { it.date }
+            }.onFailure { err ->
+                // 仅当月历上没有小点时才提示，避免每次切换都刷屏
+                if (calendarDays.isEmpty()) {
+                    snackbarHost.showSnackbar("未连接服务器，记录小点暂不显示：${err.message}")
+                }
             }
         }
         // 2) 农历/节气/节日：离线计算，不依赖后端 /api/lunar
@@ -91,7 +98,10 @@ fun CalendarScreen(nav: NavHostController) {
     val header = weekdayHeader(weekStartSunday)
     val weeks = grid.chunked(7)
 
-    Scaffold(topBar = { TopAppBar(title = { Text("日历") }) }) { padding ->
+    Scaffold(
+        topBar = { TopAppBar(title = { Text("日历") }) },
+        snackbarHost = { SnackbarHost(snackbarHost) },
+    ) { padding ->
         Column(modifier = Modifier.fillMaxSize().padding(padding)) {
             Row(modifier = Modifier.fillMaxWidth().padding(horizontal = 12.dp, vertical = 4.dp), verticalAlignment = Alignment.CenterVertically) {
                 IconButton(onClick = { if (month == 1) { month = 12; year-- } else month-- }) { Icon(Icons.Filled.ChevronLeft, contentDescription = "上月") }
