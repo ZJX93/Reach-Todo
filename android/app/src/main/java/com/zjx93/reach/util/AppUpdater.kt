@@ -248,24 +248,30 @@ object AppUpdater {
     }
 
     /**
-     * 下载完成后触发安装（幂等）：同一下载 id 只会真正安装一次。
+     * 下载完成后触发安装（幂等）：同一下载 id 只会真正调起一次安装。
      * 前台（设置页轮询，带 Activity 上下文，最可靠）与后台（广播接收器 / Application 启动补装）都会调用，
      * 靠 [installedIds] 去重，避免重复弹出安装确认。
      * 文件不存在或为空时跳过（可能尚未落盘，交由轮询下一轮重试）。
+     * @return true 表示成功调起安装；false 表示失败，调用方应保留 active 供用户重试。
      */
-    fun finishDownload(context: Context, id: Long) {
+    fun finishDownload(context: Context, id: Long): Boolean {
         if (installedIds.contains(id)) {
             Log.d(TAG, "install already triggered for id=$id, skip")
-            return
+            return true
         }
         val file = updateFile(context)
         if (!file.exists() || file.length() <= 0) {
             Log.w(TAG, "apk not ready for id=$id (missing/empty), skip")
-            return
+            return false
         }
-        installedIds.add(id)
-        Log.d(TAG, "finishDownload triggering install id=$id size=${file.length()}")
-        installApk(context, file)
+        val ok = installApk(context, file)
+        if (ok) {
+            installedIds.add(id)
+            Log.d(TAG, "finishDownload install triggered id=$id size=${file.length()}")
+        } else {
+            Log.w(TAG, "finishDownload failed to trigger install id=$id")
+        }
+        return ok
     }
 
     /**
@@ -291,27 +297,60 @@ object AppUpdater {
     // ----------------------------------------------------------------------------
 
     /**
-     * 安装 APK。优先使用 PackageInstaller 会话（Android 5+ 通用、可靠），
-     * 直接把文件字节流写入安装会话，无需经 FileProvider 暴露 content://，
-     * 规避部分系统/模拟器对 ACTION_INSTALL_PACKAGE + content URI 的兼容问题。
-     * 旧系统回退到 ACTION_INSTALL_PACKAGE。
+     * 安装 APK。兼容性优先：
+     * 1. 先尝试 `ACTION_VIEW` + FileProvider content URI（MIUI/ColorOS/OriginOS 等国产 ROM 最稳）；
+     * 2. 失败再回退 PackageInstaller 会话（Pixel/类原生 / Android 模拟器稳）；
+     * 3. 最后兜底 `ACTION_INSTALL_PACKAGE`（旧系统）。
+     *
+     * @return true 表示成功调起安装界面；false 表示全部方式都失败。
      */
-    fun installApk(context: Context, file: File) {
+    fun installApk(context: Context, file: File): Boolean {
         Log.d(TAG, "install apk: ${file.absolutePath} size=${file.length()}")
+
+        // 方式 1：ACTION_VIEW + content URI（通用性最好，国产 ROM 基本都能弹）
+        try {
+            installViaViewIntent(context, file)
+            return true
+        } catch (e: Exception) {
+            Log.w(TAG, "ACTION_VIEW install failed, fallback", e)
+        }
+
+        // 方式 2：PackageInstaller 会话（API 21+，适合原生/类原生）
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.LOLLIPOP) {
             try {
                 installViaSession(context, file)
-                return
+                return true
             } catch (e: Exception) {
-                Log.w(TAG, "PackageInstaller session failed, fallback to intent", e)
+                Log.w(TAG, "PackageInstaller session failed, fallback", e)
             }
         }
-        // 兜底：旧系统走 ACTION_INSTALL_PACKAGE（仍依赖 FileProvider）
+
+        // 方式 3：ACTION_INSTALL_PACKAGE（旧系统兜底）
+        try {
+            installViaInstallPackage(context, file)
+            return true
+        } catch (e: Exception) {
+            Log.e(TAG, "ACTION_INSTALL_PACKAGE install failed", e)
+        }
+        return false
+    }
+
+    /** 最通用：调起系统「打开方式」/安装器，用户可见安装弹窗。 */
+    private fun installViaViewIntent(context: Context, file: File) {
+        val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
+        val intent = Intent(Intent.ACTION_VIEW).apply {
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
+        }
+        context.startActivity(intent)
+    }
+
+    /** 兜底：ACTION_INSTALL_PACKAGE（必须同时设 data 和 type）。 */
+    private fun installViaInstallPackage(context: Context, file: File) {
         val uri = FileProvider.getUriForFile(context, FILE_PROVIDER_AUTHORITY, file)
         val intent = Intent(Intent.ACTION_INSTALL_PACKAGE).apply {
-            data = uri
-            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION
-            addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            setDataAndType(uri, "application/vnd.android.package-archive")
+            flags = Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK
         }
         context.startActivity(intent)
     }
@@ -348,7 +387,7 @@ object AppUpdater {
 
     /**
      * 在 [ReachApplication.onCreate] 中注册。下载完成（无论设置页是否打开）即调起安装；
-     * 失败则清理活跃记录，由界面在打开时展示错误。
+     * 安装成功调起才清理活跃记录，失败则保留 active 让用户重试而不重新下载。
      */
     class DownloadCompleteReceiver : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
@@ -359,8 +398,9 @@ object AppUpdater {
             when (getDownloadStatus(appCtx, id)) {
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     Log.d(TAG, "download complete, installing")
-                    finishDownload(appCtx, id)
-                    clearActive(appCtx)
+                    if (finishDownload(appCtx, id)) {
+                        clearActive(appCtx)
+                    }
                 }
                 else -> {
                     Log.w(TAG, "download failed/unknown, clearing active")

@@ -32,8 +32,9 @@ class ReachApplication : Application() {
             // 若上次退出前已下载完成（完成广播可能因进程被杀而丢失），启动后补装
             val act = AppUpdater.getActive()
             if (act != null && AppUpdater.getDownloadStatus(this, act.first) == DownloadManager.STATUS_SUCCESSFUL) {
-                AppUpdater.finishDownload(this, act.first)
-                AppUpdater.clearActive(this)
+                if (AppUpdater.finishDownload(this, act.first)) {
+                    AppUpdater.clearActive(this)
+                }
             }
         } catch (e: Throwable) {
             // 任何初始化异常（含 Error 子类如 NoClassDefFoundError）都绝不能让 Application 创建失败，否则会直接闪退

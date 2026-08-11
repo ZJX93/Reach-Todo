@@ -103,8 +103,14 @@ private fun UpdateSection() {
     var latest by remember { mutableStateOf<AppUpdater.ReleaseInfo?>(null) }
     var error by remember { mutableStateOf<String?>(null) }
     var downloading by remember { mutableStateOf(false) }
+    var installing by remember { mutableStateOf(false) }
     var progress by remember { mutableStateOf(0f) }
     var downloadId by remember { mutableStateOf(-1L) }
+
+    fun showInstallError() {
+        error = "下载完成，但未能调起安装。请检查是否允许安装未知应用，或点击重试。"
+        installing = false
+    }
 
     fun doCheck() {
         scope.launch {
@@ -134,8 +140,12 @@ private fun UpdateSection() {
             }
             DownloadManager.STATUS_SUCCESSFUL -> {
                 // 上次离开时已下载完（完成广播可能因进程被杀丢失），这里前台补装
-                AppUpdater.finishDownload(context, act.first)
-                AppUpdater.clearActive(context)
+                installing = true
+                if (AppUpdater.finishDownload(context, act.first)) {
+                    AppUpdater.clearActive(context)
+                } else {
+                    showInstallError()
+                }
             }
             else -> AppUpdater.clearActive(context)
         }
@@ -150,9 +160,14 @@ private fun UpdateSection() {
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     // 前台（带 Activity 上下文）直接触发安装，确保 app 内可完成更新；
                     // 即便后台广播丢失也能装上，且 finishDownload 幂等不会重复弹窗
-                    AppUpdater.finishDownload(context, downloadId)
-                    AppUpdater.clearActive(context)
                     downloading = false
+                    installing = true
+                    val ok = AppUpdater.finishDownload(context, downloadId)
+                    if (ok) {
+                        AppUpdater.clearActive(context)
+                    } else {
+                        showInstallError()
+                    }
                     break
                 }
                 DownloadManager.STATUS_FAILED -> {
@@ -199,6 +214,15 @@ private fun UpdateSection() {
                 Spacer(Modifier.height(8.dp))
                 LinearProgressIndicator(progress = { progress }, modifier = Modifier.fillMaxWidth())
             }
+            installing -> {
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    CircularProgressIndicator(modifier = Modifier.size(18.dp), strokeWidth = 2.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Text("下载完成，正在调起安装…", style = MaterialTheme.typography.bodyMedium, color = MaterialTheme.colorScheme.primary)
+                }
+                Spacer(Modifier.height(8.dp))
+                Text("请按系统弹出的安装提示完成更新。若未弹出，请检查「安装未知应用」权限。", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.outline)
+            }
             error != null -> {
                 Text(error!!, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.error)
                 Spacer(Modifier.height(8.dp))
@@ -228,7 +252,7 @@ private fun UpdateSection() {
         }
 
         // 尚未检查过时展示「检查更新」入口
-        if (!checking && latest == null && error == null && !downloading) {
+        if (!checking && latest == null && error == null && !downloading && !installing) {
             Spacer(Modifier.height(8.dp))
             Button(onClick = { doCheck() }, modifier = Modifier.fillMaxWidth()) { Text("检查更新") }
         }
