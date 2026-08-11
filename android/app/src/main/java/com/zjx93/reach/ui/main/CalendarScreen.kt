@@ -56,6 +56,7 @@ fun CalendarScreen(nav: NavHostController) {
     val repo = remember { ReachRepository() }
     val scope = rememberCoroutineScope()
     val settings by UserPrefs.settingsFlow.collectAsState(initial = UserPrefs.AppSettings())
+    val serverUrl by UserPrefs.serverUrlFlow.collectAsState(initial = "")
 
     val (iy, im) = remember { currentYearMonth(settings.timezone) }
     var year by remember { mutableStateOf(iy) }
@@ -68,11 +69,12 @@ fun CalendarScreen(nav: NavHostController) {
     // 连接异常提示（避免静默失败导致用户不知道小点为何没显示）
     val snackbarHost = remember { SnackbarHostState() }
 
-    LaunchedEffect(year) {
+    LaunchedEffect(year, serverUrl) {
         scope.launch { repo.holidays(year).onSuccess { holidays = it }.onFailure { } }
     }
 
-    LaunchedEffect(year, month) {
+    // serverUrl 加入 keys：用户在设置页修改后端地址后，回到日历会自动重新拉取记录/节假日
+    LaunchedEffect(year, month, serverUrl) {
         // 1) 记录/任务聚合（仍走后端，离线时降级为空）
         launch {
             repo.recordsCalendar(year, month).onSuccess { list ->
@@ -111,13 +113,24 @@ fun CalendarScreen(nav: NavHostController) {
                 TextButton(onClick = { year = iy; month = im }) { Text("今天") }
             }
 
-            Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
-                header.forEach { w ->
-                    Text(w, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
-                }
-            }
+            Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
+                // 月份水印：参考效果，在日期网格背后显示大号半透明月份数字
+                Text(
+                    text = month.toString(),
+                    modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center),
+                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 180.sp),
+                    color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.10f),
+                    textAlign = TextAlign.Center,
+                )
 
-            weeks.forEach { week ->
+                Column(modifier = Modifier.fillMaxSize()) {
+                    Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
+                        header.forEach { w ->
+                            Text(w, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                        }
+                    }
+
+                    weeks.forEach { week ->
                 Row(modifier = Modifier.fillMaxWidth()) {
                     week.forEach { d ->
                         val ds = d?.toString()
@@ -194,4 +207,6 @@ fun CalendarScreen(nav: NavHostController) {
             }
         }
     }
+}
+}
 }
