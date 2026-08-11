@@ -60,13 +60,13 @@ fun MainScaffold(rootNav: NavHostController) {
         NavHost(inner, startDestination = Routes.DASHBOARD, modifier = Modifier.padding(padding)) {
             composable(Routes.DASHBOARD) { DashboardScreen(inner) }
             composable(Routes.TASKS) { TasksScreen(inner) }
-            composable(Routes.TASK_EDIT, arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> TaskEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
+            composable(route = "${Routes.TASK_EDIT}?id={id}", arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> TaskEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
             composable(Routes.GOALS) { GoalsScreen(inner) }
-            composable(Routes.GOAL_EDIT, arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> GoalEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
+            composable(route = "${Routes.GOAL_EDIT}?id={id}", arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> GoalEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
             composable(Routes.RECORDS) { RecordsScreen(inner) }
-            composable(Routes.RECORD_EDIT, arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> RecordEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
+            composable(route = "${Routes.RECORD_EDIT}?id={id}", arguments = listOf(navArgument("id") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> RecordEditScreen(inner, back.arguments?.getString("id")?.toIntOrNull()) }
             composable(Routes.CALENDAR) { CalendarScreen(inner) }
-            composable(Routes.DAY_DETAIL, arguments = listOf(navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> DayDetailScreen(inner, back.arguments?.getString("date")) }
+            composable(route = "${Routes.DAY_DETAIL}?date={date}", arguments = listOf(navArgument("date") { type = NavType.StringType; nullable = true; defaultValue = null })) { back -> DayDetailScreen(inner, back.arguments?.getString("date")) }
             composable(Routes.FOCUS) { FocusScreen(inner) }
             composable(Routes.PROFILE) { ProfileScreen(inner, rootNav) }
             composable(Routes.SETTINGS) { SettingsScreen(inner) }
