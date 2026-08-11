@@ -5,6 +5,8 @@ import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.ChevronLeft
 import androidx.compose.material.icons.filled.ChevronRight
@@ -14,6 +16,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -38,17 +41,7 @@ private val DIARY_COLOR = Color(0xFF14B8A6)   // 个人日记
 private val WORKLOG_COLOR = Color(0xFF2563EB) // 工作日志
 private val NOTE_COLOR = Color(0xFFF59E0B)    // 读书笔记
 private val TASK_COLOR = Color(0xFF94A3B8)    // 任务（灰）
-
-/** 给月历格子用的短农历文字：优先节日/节气，其次农历日（初一显示月份）。 */
-private fun cellLunar(info: LunarInfo?): String? {
-    if (info == null) return null
-    val festival = info.jieri?.takeIf { it.isNotBlank() }
-    val term = if (info.jieqiDays == "1") info.jieqi?.takeIf { it.isNotBlank() } else null
-    if (festival != null) return festival
-    if (term != null) return term
-    val nri = info.nri ?: return null
-    return if (nri == "初一") (info.nyue ?: nri) else nri
-}
+private val SKY_COLOR = Color(0xFF0EA5E9)     // 节气/节假日名称（青）
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -75,14 +68,14 @@ fun CalendarScreen(nav: NavHostController) {
 
     // serverUrl 加入 keys：用户在设置页修改后端地址后，回到日历会自动重新拉取记录/节假日
     LaunchedEffect(year, month, serverUrl) {
-        // 1) 记录/任务聚合（仍走后端，离线时降级为空）
+        // 1) 记录/任务聚合（走后端，离线时降级为空）
         launch {
             repo.recordsCalendar(year, month).onSuccess { list ->
                 calendarDays = list.associateBy { it.date }
             }.onFailure { err ->
-                // 仅当月历上没有小点时才提示，避免每次切换都刷屏
+                // 仅在尚未拿到任何数据时提示，避免切换月份时反复刷屏
                 if (calendarDays.isEmpty()) {
-                    snackbarHost.showSnackbar("未连接服务器，记录小点暂不显示：${err.message}")
+                    snackbarHost.showSnackbar("记录加载失败（检查后端地址/登录态）：${err.message}")
                 }
             }
         }
@@ -114,89 +107,137 @@ fun CalendarScreen(nav: NavHostController) {
             }
 
             Box(modifier = Modifier.fillMaxWidth().weight(1f)) {
-                // 月份水印：参考效果，在日期网格背后显示大号半透明月份数字
+                // 月份水印：参考 web CalendarGrid.jsx，在日期网格背后显示大号半透明月份数字
                 Text(
                     text = month.toString(),
                     modifier = Modifier.fillMaxSize().wrapContentSize(Alignment.Center),
-                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 180.sp),
+                    style = MaterialTheme.typography.displayLarge.copy(fontSize = 200.sp),
                     color = MaterialTheme.colorScheme.outlineVariant.copy(alpha = 0.10f),
                     textAlign = TextAlign.Center,
                 )
 
-                Column(modifier = Modifier.fillMaxSize()) {
+                Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+                    // 星期表头（与 web 一致：14sp 中等字重，周末红色）
                     Row(modifier = Modifier.fillMaxWidth().padding(vertical = 4.dp)) {
                         header.forEach { w ->
-                            Text(w, modifier = Modifier.weight(1f), textAlign = TextAlign.Center, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.outline)
+                            val wkRed = w == "日" || w == "六"
+                            Text(
+                                w,
+                                modifier = Modifier.weight(1f),
+                                textAlign = TextAlign.Center,
+                                fontSize = 13.sp,
+                                fontWeight = FontWeight.Medium,
+                                color = if (wkRed) MaterialTheme.colorScheme.error else MaterialTheme.colorScheme.outline,
+                            )
                         }
                     }
 
                     weeks.forEach { week ->
-                Row(modifier = Modifier.fillMaxWidth()) {
-                    week.forEach { d ->
-                        val ds = d?.toString()
-                        val inMonth = d?.monthValue == month
-                        val hol = ds?.let { holidays[it] }
-                        val cal = ds?.let { calendarDays[it] }
-                        val lun = ds?.let { lunarMap[it] }
-                        val isToday = ds == today
-                        val isWeekend = d?.dayOfWeek == DayOfWeek.SATURDAY || d?.dayOfWeek == DayOfWeek.SUNDAY
-                        val dim = if (!inMonth) 0.4f else 1f
+                        Row(modifier = Modifier.fillMaxWidth()) {
+                            week.forEach { d ->
+                                val ds = d?.toString()
+                                val inMonth = d?.monthValue == month
+                                val hol = ds?.let { holidays[it] }
+                                val cal = ds?.let { calendarDays[it] }
+                                val lun = ds?.let { lunarMap[it] }
+                                val isToday = ds == today
+                                val isWeekend = d?.dayOfWeek == DayOfWeek.SATURDAY || d?.dayOfWeek == DayOfWeek.SUNDAY
+                                val isLegalHoliday = hol != null && hol.isOffDay
+                                val dim = if (!inMonth) 0.4f else 1f
 
-                        val cellBg = when {
-                            hol != null && hol.isOffDay -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.20f)
-                            hol != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
-                            else -> Color.Transparent
-                        }
-                        val dayColor = when {
-                            isToday -> MaterialTheme.colorScheme.primary
-                            isWeekend -> MaterialTheme.colorScheme.error
-                            else -> MaterialTheme.colorScheme.onSurface
-                        }
+                                val cellBg = when {
+                                    isLegalHoliday -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.20f)
+                                    hol != null -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.18f)
+                                    else -> Color.Transparent
+                                }
+                                val dayColor = when {
+                                    isWeekend || isLegalHoliday -> MaterialTheme.colorScheme.error
+                                    else -> MaterialTheme.colorScheme.onSurface
+                                }
 
-                        Box(
-                            modifier = Modifier.weight(1f).aspectRatio(1f)
-                                .padding(2.dp)
-                                .clip(RoundedCornerShape(10.dp))
-                                .background(cellBg)
-                                .clickable { d?.let { nav.navigate("${Routes.DAY_DETAIL}?date=${it}") } },
-                            contentAlignment = Alignment.TopCenter,
-                        ) {
-                            // 休 / 班 角标
-                            if (hol != null) {
+                                // 节气 / 节日 / 节假日名称（优先于普通农历日）
+                                val term = if (lun?.jieqiDays == "1") lun?.jieqi?.takeIf { it.isNotBlank() } else null
+                                val festival = lun?.jieri?.takeIf { it.isNotBlank() }
+                                val holidayName = hol?.name?.takeIf { it.isNotBlank() }
+                                val primarySub = term ?: festival ?: holidayName
+                                val primaryColor = when {
+                                    term != null -> MaterialTheme.colorScheme.primary
+                                    isLegalHoliday -> MaterialTheme.colorScheme.error
+                                    else -> SKY_COLOR
+                                }
+                                // 普通农历日（初一显示月份）
+                                val lunarDay = lun?.let {
+                                    val nri = it.nri ?: return@let null
+                                    if (nri == "初一") it.nyue ?: nri else nri
+                                }?.takeIf { it.isNotBlank() }
+
                                 Box(
-                                    modifier = Modifier.align(Alignment.TopEnd).padding(2.dp)
-                                        .background(
-                                            if (hol.isOffDay) Color(0xFFEF4444) else Color(0xFF2563EB),
-                                            RoundedCornerShape(3.dp),
-                                        )
-                                        .padding(horizontal = 3.dp, vertical = 1.dp),
+                                    modifier = Modifier.weight(1f).height(84.dp)
+                                        .padding(3.dp)
+                                        .clip(RoundedCornerShape(12.dp))
+                                        .background(cellBg)
+                                        .clickable { d?.let { nav.navigate("${Routes.DAY_DETAIL}?date=${it}") } },
+                                    contentAlignment = Alignment.TopStart,
                                 ) {
-                                    Text(if (hol.isOffDay) "休" else "班", fontSize = 8.sp, color = Color.White)
-                                }
-                            }
+                                    // 休 / 班 角标
+                                    if (hol != null) {
+                                        Box(
+                                            modifier = Modifier.align(Alignment.TopEnd).padding(3.dp)
+                                                .background(
+                                                    if (hol.isOffDay) Color(0xFFEF4444) else Color(0xFF2563EB),
+                                                    RoundedCornerShape(3.dp),
+                                                )
+                                                .padding(horizontal = 3.dp, vertical = 1.dp),
+                                        ) {
+                                            Text(if (hol.isOffDay) "休" else "班", fontSize = 9.sp, color = Color.White)
+                                        }
+                                    }
 
-                            Column(
-                                horizontalAlignment = Alignment.CenterHorizontally,
-                                modifier = Modifier.fillMaxSize().padding(top = 4.dp),
-                            ) {
-                                Text("${d?.dayOfMonth ?: ""}", fontSize = 15.sp, color = dayColor.copy(alpha = dim))
-                                cellLunar(lun)?.let {
-                                    Text(it, fontSize = 8.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dim), maxLines = 1)
-                                }
-                                Spacer(Modifier.weight(1f))
-                                val dots = listOfNotNull(
-                                    if ((cal?.diary ?: 0) > 0) DIARY_COLOR else null,
-                                    if ((cal?.worklog ?: 0) > 0) WORKLOG_COLOR else null,
-                                    if ((cal?.note ?: 0) > 0) NOTE_COLOR else null,
-                                    if ((cal?.tasks ?: 0) > 0) TASK_COLOR else null,
-                                )
-                                if (dots.isNotEmpty()) {
-                                    Row(
-                                        horizontalArrangement = Arrangement.Center,
-                                        modifier = Modifier.padding(bottom = 3.dp),
+                                    Column(
+                                        horizontalAlignment = Alignment.Start,
+                                        modifier = Modifier.fillMaxSize().padding(start = 6.dp, top = 6.dp, end = 6.dp, bottom = 4.dp),
                                     ) {
-                                        dots.forEach { c ->
-                                            Box(Modifier.padding(horizontal = 1.dp).size(4.dp).background(c.copy(alpha = dim), CircleShape))
+                                        // 公历日期：今天/选中做成圆形高亮（与 web 一致）
+                                        if (isToday) {
+                                            Box(
+                                                modifier = Modifier.size(28.dp).background(MaterialTheme.colorScheme.primary, CircleShape),
+                                                contentAlignment = Alignment.Center,
+                                            ) {
+                                                Text("${d?.dayOfMonth ?: ""}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = Color.White)
+                                            }
+                                        } else {
+                                            Text("${d?.dayOfMonth ?: ""}", fontSize = 14.sp, fontWeight = FontWeight.Bold, color = dayColor.copy(alpha = dim))
+                                        }
+
+                                        Spacer(Modifier.height(3.dp))
+
+                                        // 农历日（普通，灰色）
+                                        lunarDay?.let {
+                                            Text(it, fontSize = 11.sp, color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = dim), maxLines = 1)
+                                        }
+                                        // 节气 / 节日 / 节假日名称（彩色）
+                                        primarySub?.let {
+                                            Text(it, fontSize = 10.sp, color = primaryColor.copy(alpha = dim), maxLines = 1)
+                                        }
+
+                                        Spacer(Modifier.weight(1f))
+
+                                        // 记录/任务小点（底部左对齐，放大到 6dp 更易见）
+                                        val dots = listOfNotNull(
+                                            if ((cal?.diary ?: 0) > 0) DIARY_COLOR else null,
+                                            if ((cal?.worklog ?: 0) > 0) WORKLOG_COLOR else null,
+                                            if ((cal?.note ?: 0) > 0) NOTE_COLOR else null,
+                                            if ((cal?.tasks ?: 0) > 0) TASK_COLOR else null,
+                                        )
+                                        if (dots.isNotEmpty()) {
+                                            Row(
+                                                horizontalArrangement = Arrangement.spacedBy(3.dp),
+                                                modifier = Modifier.padding(top = 2.dp),
+                                            ) {
+                                                dots.forEach { c ->
+                                                    Box(Modifier.size(6.dp).background(c.copy(alpha = dim), CircleShape))
+                                                }
+                                            }
                                         }
                                     }
                                 }
@@ -207,6 +248,4 @@ fun CalendarScreen(nav: NavHostController) {
             }
         }
     }
-}
-}
 }
