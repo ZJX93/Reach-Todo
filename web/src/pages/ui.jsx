@@ -155,7 +155,11 @@ const NAV = {
     </>
   ),
   brand: (
-    <path d="M12 2L14.5 9.5L22 12L14.5 14.5L12 22L9.5 14.5L2 12L9.5 9.5L12 2Z" />
+    <>
+      <path d="M18.36 5.64 L14.26 14.26 L12 12 L9.74 9.74 Z" fill="#FFFFFF"/>
+      <path d="M7.05 16.95 L14.26 14.26 L12 12 L9.74 9.74 Z" fill="#E3F4F5" fill-opacity="0.7"/>
+      <circle cx="12" cy="12" r="2" fill="#0A7382"/>
+    </>
   ),
 }
 

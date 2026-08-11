@@ -3,12 +3,32 @@
     android:height="108dp"
     android:viewportWidth="108"
     android:viewportHeight="108">
-    <!-- checkmark within the 66dp safe zone (21..87) -->
+    <!-- 罗盘外环 -->
     <path
-        android:pathData="M30,55 L47,72 L78,40"
+        android:pathData="M54,22 A32,32 0 1 1 53.99,22 Z"
         android:strokeColor="#FFFFFF"
-        android:strokeWidth="9"
-        android:strokeLineCap="round"
-        android:strokeLineJoin="round"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.35"
         android:fillColor="#00000000" />
+    <!-- 四向刻度 -->
+    <path
+        android:pathData="M54,22 L54,30 M54,78 L54,86 M22,54 L30,54 M78,54 L86,54"
+        android:strokeColor="#FFFFFF"
+        android:strokeWidth="2"
+        android:strokeAlpha="0.5"
+        android:strokeLineCap="round" />
+    <!-- 指南针双色指针（指向右上 = 抵达） -->
+    <path
+        android:pathData="M73.8,34.2 L62.5,62.5 L54,54 L45.5,45.5 Z"
+        android:fillColor="#FFFFFF" />
+    <path
+        android:pathData="M38.4,69.6 L62.5,62.5 L54,54 L45.5,45.5 Z"
+        android:fillColor="#FFFFFF"
+        android:fillAlpha="0.85" />
+    <path
+        android:pathData="M54,46 A8,8 0 1 1 53.99,46 Z"
+        android:fillColor="#0A7382" />
+    <path
+        android:pathData="M54,50 A4,4 0 1 1 53.99,50 Z"
+        android:fillColor="#FFFFFF" />
 </vector>

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Reach app icon">
+  <!-- 单一方形圆角 tile + 向右上箭头：抵达 / 前进 / 达成 -->
+  <rect x="16" y="16" width="480" height="480" rx="112" fill="#0E97A8"/>
+  <g stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M176 336 L336 176"/>
+    <path d="M256 176 L336 176 L336 256"/>
+  </g>
+</svg>

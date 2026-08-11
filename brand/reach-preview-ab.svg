@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 540" width="720" height="540" font-family="'Sora','Noto Sans SC',sans-serif">
+  <!-- 背景 -->
+  <rect x="0" y="0" width="720" height="540" fill="#F6FAFB"/>
+
+  <!-- 标题 -->
+  <text x="40" y="52" fill="#15262C" font-size="26" font-weight="700">Reach 品牌标识 · A + B 方案预览</text>
+  <text x="40" y="78" fill="#5B7780" font-size="14">单一青蓝品牌色 ｜ Reach Teal #0E97A8 ｜ 抵达语义</text>
+
+  <!-- 色板 -->
+  <g transform="translate(40 100)">
+    <rect x="0"   y="0" width="110" height="44" rx="8" fill="#0E97A8"/>
+    <rect x="120" y="0" width="110" height="44" rx="8" fill="#0A7382"/>
+    <rect x="240" y="0" width="110" height="44" rx="8" fill="#15262C"/>
+    <rect x="360" y="0" width="110" height="44" rx="8" fill="#5B7780"/>
+    <rect x="480" y="0" width="110" height="44" rx="8" fill="#E3F4F5"/>
+    <text x="8"   y="62" fill="#5B7780" font-size="12">#0E97A8 Teal</text>
+    <text x="128" y="62" fill="#5B7780" font-size="12">#0A7382 Deep</text>
+    <text x="248" y="62" fill="#5B7780" font-size="12">#15262C Ink</text>
+    <text x="368" y="62" fill="#5B7780" font-size="12">#5B7780 Muted</text>
+    <text x="488" y="62" fill="#5B7780" font-size="12">#E3F4F5 Tint</text>
+  </g>
+
+  <!-- A 卡片：青蓝徽章 -->
+  <g transform="translate(40 210)">
+    <rect x="0" y="0" width="300" height="280" rx="16" fill="#FFFFFF" stroke="#E3F4F5" stroke-width="1.5"/>
+    <text x="20" y="34" fill="#0E97A8" font-size="16" font-weight="700">A · 青蓝版徽章</text>
+    <text x="20" y="56" fill="#5B7780" font-size="12">启动页 / 社交头像 / 印章 / 海报</text>
+    <image x="86" y="78" width="128" height="128" href="reach-badge.svg"/>
+    <text x="20" y="240" fill="#15262C" font-size="12">保留参考图徽章结构，换品牌青蓝；</text>
+    <text x="20" y="258" fill="#15262C" font-size="12">弧形文字 REACH·TODO + 中文 slogan。</text>
+  </g>
+
+  <!-- B 卡片：图形标 + 组合标 -->
+  <g transform="translate(380 210)">
+    <rect x="0" y="0" width="300" height="280" rx="16" fill="#FFFFFF" stroke="#E3F4F5" stroke-width="1.5"/>
+    <text x="20" y="34" fill="#0E97A8" font-size="16" font-weight="700">B · 提炼图形标（主力）</text>
+    <text x="20" y="56" fill="#5B7780" font-size="12">App 图标 / 页眉 / favicon</text>
+    <image x="74" y="76" width="96" height="96" href="reach-glyph.svg"/>
+    <image x="40" y="184" width="220" height="74" href="reach-combination-v3.svg"/>
+  </g>
+
+  <!-- 底部说明 -->
+  <text x="40" y="520" fill="#5B7780" font-size="12">建议：B 作主标识（App 图标 + 页眉），A 作扩展徽章（启动页 / 海报）。生产前文字转曲。</text>
+</svg>

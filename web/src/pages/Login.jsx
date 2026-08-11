@@ -39,8 +39,12 @@ export default function Login() {
 
       <div className="relative w-full max-w-sm bg-white/55 backdrop-blur-[18px] border border-white/75 rounded-3xl shadow-[0_20px_50px_-20px_rgba(8,145,178,0.35)] p-8">
         <div className="text-center mb-7">
-          <div className="mx-auto w-14 h-14 rounded-2xl brand-gradient grid place-items-center text-white text-2xl font-bold shadow-[0_8px_24px_-12px_rgba(8,145,178,0.3)] mb-4">
-            抵
+          <div className="mx-auto w-14 h-14 rounded-2xl brand-gradient grid place-items-center shadow-[0_8px_24px_-12px_rgba(8,145,178,0.3)] mb-4">
+            <svg viewBox="0 0 24 24" className="w-8 h-8">
+              <path d="M18.36 5.64 L14.26 14.26 L12 12 L9.74 9.74 Z" fill="#FFFFFF"/>
+              <path d="M7.05 16.95 L14.26 14.26 L12 12 L9.74 9.74 Z" fill="#E3F4F5" fill-opacity="0.7"/>
+              <circle cx="12" cy="12" r="2" fill="#0A7382"/>
+            </svg>
           </div>
           <div className="text-2xl font-bold text-[#0f172a] font-display">抵达 · Reach</div>
           <p className="text-sm text-[#475569] mt-2">

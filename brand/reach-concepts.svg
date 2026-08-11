@@ -1,0 +1,64 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 660 400" role="img" aria-label="Reach logo concepts">
+  <defs>
+    <style><![CDATA[
+      @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500&display=swap');
+      .brand{font-family:'Sora',sans-serif;}
+      .cjk{font-family:'Noto Sans SC',sans-serif;}
+    ]]></style>
+  </defs>
+  <rect width="660" height="400" fill="#FFFFFF"/>
+
+  <!-- 标题 -->
+  <text class="brand" x="40" y="52" font-size="30" font-weight="700" fill="#15262C">Reach 标志方案</text>
+  <text class="brand" x="40" y="78" font-size="14" font-weight="500" fill="#5B7780" letter-spacing="3">LOGO CONCEPTS · 大方简约 · 单一青蓝</text>
+
+  <!-- 色板 -->
+  <g>
+    <rect x="40"  y="104" width="54" height="34" rx="8" fill="#0E97A8"/>
+    <rect x="106" y="104" width="54" height="34" rx="8" fill="#0A7382"/>
+    <rect x="172" y="104" width="54" height="34" rx="8" fill="#15262C"/>
+    <rect x="238" y="104" width="54" height="34" rx="8" fill="#5B7780"/>
+    <rect x="304" y="104" width="54" height="34" rx="8" fill="#E3F4F5" stroke="#CBD9DD" stroke-width="1"/>
+  </g>
+  <g class="brand" font-size="12" font-weight="500" fill="#15262C">
+    <text x="40"  y="156">Reach Teal</text>
+    <text x="106" y="156">Deep Teal</text>
+    <text x="172" y="156">Ink</text>
+    <text x="238" y="156">Muted</text>
+    <text x="304" y="156">Tint</text>
+  </g>
+
+  <!-- 概念 A：简洁箭头 -->
+  <rect x="40" y="190" width="120" height="120" rx="28" fill="#0E97A8"/>
+  <g stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M64 110 L104 70"/>
+    <path d="M84 70 L104 70 L104 90"/>
+  </g>
+  <text class="brand" x="40" y="334" font-size="16" font-weight="600" fill="#15262C">A · 简洁箭头（推荐）</text>
+  <text class="brand" x="40" y="356" font-size="13" font-weight="500" fill="#5B7780">最克制，跨端识别度最高</text>
+
+  <!-- 概念 B：起点圆环 → 抵达 -->
+  <rect x="200" y="190" width="120" height="120" rx="28" fill="#0E97A8"/>
+  <circle cx="64" cy="110" r="15" stroke="#FFFFFF" stroke-width="8" fill="none"/>
+  <g stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M64 110 L104 70"/>
+    <path d="M84 70 L104 70 L104 90"/>
+  </g>
+  <text class="brand" x="200" y="334" font-size="16" font-weight="600" fill="#15262C">B · 起点 → 抵达</text>
+  <text class="brand" x="200" y="356" font-size="13" font-weight="500" fill="#5B7780">带起点圆环，叙事感更强</text>
+
+  <!-- 组合标应用示例 -->
+  <g transform="translate(377.33,193.33) scale(0.1667)">
+    <rect x="16" y="16" width="480" height="480" rx="112" fill="#0E97A8"/>
+    <g stroke="#FFFFFF" stroke-width="52" stroke-linecap="round" stroke-linejoin="round" fill="none">
+      <path d="M176 336 L336 176"/>
+      <path d="M256 176 L336 176 L336 256"/>
+    </g>
+  </g>
+  <text class="brand" x="476" y="240" font-size="34" font-weight="700" fill="#15262C">Reach</text>
+  <text class="brand" x="478" y="266" font-size="14" font-weight="500" fill="#5B7780" letter-spacing="4">
+    <tspan class="cjk">抵达</tspan><tspan> · TODO</tspan>
+  </text>
+  <text class="brand" x="380" y="334" font-size="16" font-weight="600" fill="#15262C">组合标 · 应用示例</text>
+  <text class="brand" x="380" y="356" font-size="13" font-weight="500" fill="#5B7780">图标 + 字形，web / 文档通用</text>
+</svg>

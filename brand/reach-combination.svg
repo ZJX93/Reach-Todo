@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 580 180" role="img" aria-label="Reach logo">
+  <defs>
+    <style><![CDATA[
+      @import url('https://fonts.googleapis.com/css2?family=Sora:wght@400;500;600;700&family=Noto+Sans+SC:wght@400;500&display=swap');
+      .brand{font-family:'Sora',sans-serif;}
+      .cjk{font-family:'Noto Sans SC',sans-serif;}
+    ]]></style>
+  </defs>
+  <rect x="24" y="30" width="120" height="120" rx="28" fill="#0E97A8"/>
+  <g stroke="#FFFFFF" stroke-width="13" stroke-linecap="round" stroke-linejoin="round" fill="none">
+    <path d="M64 110 L104 70"/>
+    <path d="M84 70 L104 70 L104 90"/>
+  </g>
+  <text class="brand" x="170" y="88" font-size="66" font-weight="700" fill="#15262C">Reach</text>
+  <text class="brand" x="172" y="124" font-size="22" font-weight="500" fill="#5B7780" letter-spacing="6">
+    <tspan class="cjk">抵达</tspan><tspan> · TODO</tspan>
+  </text>
+</svg>

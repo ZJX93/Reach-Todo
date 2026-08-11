@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 480 160" width="480" height="160" role="img" aria-label="Reach 组合标">
+  <defs>
+    <linearGradient id="comboBg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#0E97A8"/>
+      <stop offset="1" stop-color="#0A7382"/>
+    </linearGradient>
+  </defs>
+
+  <!-- 左侧图标（与 App 图标同源） -->
+  <g transform="translate(0 0)">
+    <rect x="8" y="8" width="144" height="144" rx="32" fill="url(#comboBg)"/>
+    <circle cx="80" cy="80" r="44" fill="none" stroke="#E3F4F5" stroke-opacity="0.30" stroke-width="1.6"/>
+    <g stroke="#E3F4F5" stroke-opacity="0.55" stroke-width="2.4" stroke-linecap="round">
+      <line x1="80" y1="28"  x2="80" y2="38"/>
+      <line x1="80" y1="122" x2="80" y2="132"/>
+      <line x1="28" y1="80"  x2="38" y2="80"/>
+      <line x1="122" y1="80" x2="132" y2="80"/>
+    </g>
+    <path d="M108 52 L83 83 L80 80 L77 77 Z" fill="#FFFFFF"/>
+    <path d="M52 108 L83 83 L80 80 L77 77 Z" fill="#E3F4F5" fill-opacity="0.55"/>
+    <circle cx="80" cy="80" r="6" fill="#0A7382"/>
+    <circle cx="80" cy="80" r="3" fill="#FFFFFF"/>
+  </g>
+
+  <!-- 右侧文字 -->
+  <g transform="translate(176 0)">
+    <text x="0" y="78" fill="#15262C" font-family="'Sora','Noto Sans SC',sans-serif" font-size="52" font-weight="700" letter-spacing="1">Reach</text>
+    <text x="2" y="116" fill="#5B7780" font-family="'Noto Sans SC','Sora',sans-serif" font-size="22" font-weight="500" letter-spacing="6">抵达 · TODO</text>
+  </g>
+</svg>
