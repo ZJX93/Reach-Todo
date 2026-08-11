@@ -133,22 +133,25 @@ private fun UpdateSection() {
                 progress = 0f
             }
             DownloadManager.STATUS_SUCCESSFUL -> {
-                // 上次离开时已下载完（完成广播可能因进程被杀丢失），这里补装
-                AppUpdater.installApk(context, AppUpdater.updateFile(context))
+                // 上次离开时已下载完（完成广播可能因进程被杀丢失），这里前台补装
+                AppUpdater.finishDownload(context, act.first)
                 AppUpdater.clearActive(context)
             }
             else -> AppUpdater.clearActive(context)
         }
     }
 
-    // 轮询下载状态：PAUSED 自动恢复并继续；SUCCESSFUL 由 APP 级广播接收器负责安装；
+    // 轮询下载状态：PAUSED 自动恢复并继续；SUCCESSFUL 直接（前台）触发安装，不再仅依赖后台广播；
     // FAILED 展示错误；PENDING/RUNNING 更新进度。
     LaunchedEffect(downloading) {
         if (!downloading || downloadId < 0) return@LaunchedEffect
         while (true) {
             when (AppUpdater.getDownloadStatus(context, downloadId)) {
                 DownloadManager.STATUS_SUCCESSFUL -> {
-                    // 安装由 DownloadCompleteReceiver 触发；这里仅结束轮询
+                    // 前台（带 Activity 上下文）直接触发安装，确保 app 内可完成更新；
+                    // 即便后台广播丢失也能装上，且 finishDownload 幂等不会重复弹窗
+                    AppUpdater.finishDownload(context, downloadId)
+                    AppUpdater.clearActive(context)
                     downloading = false
                     break
                 }

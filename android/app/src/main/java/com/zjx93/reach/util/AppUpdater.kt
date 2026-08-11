@@ -54,6 +54,10 @@ object AppUpdater {
     private var activeUrl: String? = null
     private var activeVersion: String? = null
 
+    /** 已触发安装的下载 id 集合（幂等守卫）：避免「设置页轮询」与「后台广播 / 启动补装」对同一完成下载重复弹安装。
+     *  每次 startOrResume 开启新一轮下载尝试时清空，以便用户取消安装后可重新点击重试。 */
+    private val installedIds = mutableSetOf<Long>()
+
     data class ReleaseInfo(
         val version: String,   // 去掉前缀后的语义化版本，如 "0.0.7"
         val tagName: String,   // 原始 tag，如 "Reach-Todo.APP-v0.0.7"
@@ -186,6 +190,8 @@ object AppUpdater {
      */
     fun startOrResume(context: Context, apkUrl: String, version: String): Long {
         val appCtx = context.applicationContext
+        // 新一轮「开始 / 恢复」尝试：清空安装幂等守卫，允许本次重新触发安装（含用户此前取消安装后重试）
+        installedIds.clear()
         // 复用同一 url 的活跃下载
         if (activeId >= 0 && activeUrl == apkUrl) {
             val st = getDownloadStatus(appCtx, activeId)
@@ -197,8 +203,19 @@ object AppUpdater {
                 Log.d(TAG, "reuse active download id=$activeId status=$st")
                 return activeId
             }
-            // 状态异常（成功 / 失败 / 找不到），清理后重建
-            clearActive(appCtx)
+            if (st == DownloadManager.STATUS_SUCCESSFUL) {
+                // 已下载完成：若文件仍在，直接复用并交给调用方安装，绝不删文件从头重下（破除「再点又重复下载」死循环）
+                val f = updateFile(appCtx)
+                if (f.exists() && f.length() > 0) {
+                    Log.d(TAG, "reuse completed download id=$activeId -> ${f.absolutePath}")
+                    return activeId
+                }
+                // 文件丢失，清理后重建
+                clearActive(appCtx)
+            } else {
+                // FAILED / 找不到 → 清理后重建
+                clearActive(appCtx)
+            }
         }
         // 新下载
         val file = updateFile(appCtx)
@@ -228,6 +245,27 @@ object AppUpdater {
             if (!it.moveToFirst()) return -1
             return it.getInt(it.getColumnIndexOrThrow(DownloadManager.COLUMN_STATUS))
         }
+    }
+
+    /**
+     * 下载完成后触发安装（幂等）：同一下载 id 只会真正安装一次。
+     * 前台（设置页轮询，带 Activity 上下文，最可靠）与后台（广播接收器 / Application 启动补装）都会调用，
+     * 靠 [installedIds] 去重，避免重复弹出安装确认。
+     * 文件不存在或为空时跳过（可能尚未落盘，交由轮询下一轮重试）。
+     */
+    fun finishDownload(context: Context, id: Long) {
+        if (installedIds.contains(id)) {
+            Log.d(TAG, "install already triggered for id=$id, skip")
+            return
+        }
+        val file = updateFile(context)
+        if (!file.exists() || file.length() <= 0) {
+            Log.w(TAG, "apk not ready for id=$id (missing/empty), skip")
+            return
+        }
+        installedIds.add(id)
+        Log.d(TAG, "finishDownload triggering install id=$id size=${file.length()}")
+        installApk(context, file)
     }
 
     /**
@@ -321,7 +359,7 @@ object AppUpdater {
             when (getDownloadStatus(appCtx, id)) {
                 DownloadManager.STATUS_SUCCESSFUL -> {
                     Log.d(TAG, "download complete, installing")
-                    installApk(appCtx, updateFile(appCtx))
+                    finishDownload(appCtx, id)
                     clearActive(appCtx)
                 }
                 else -> {

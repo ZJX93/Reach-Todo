@@ -41,10 +41,31 @@ class DashboardViewModel(private val repo: ReachRepository = ReachRepository()) 
     }
 
     fun toggleDone(task: TaskOut) {
+        val newStatus = if (task.status == "done") "todo" else "done"
+        // 乐观更新：立刻在本地翻转状态并保留该项，给用户明确反馈
+        // （避免整页 reload 把已完成项从「todo」过滤掉而「消失」，造成「点击无反应」的错觉）
+        _state.update { s ->
+            s.copy(tasks = s.tasks.map { if (it.id == task.id) it.copy(status = newStatus) else it })
+        }
         viewModelScope.launch {
-            val newStatus = if (task.status == "done") "todo" else "done"
-            repo.updateTask(task.id, TaskUpdate(status = newStatus)).onSuccess { load() }
-                .onFailure { e -> _state.update { it.copy(error = e.message) } }
+            repo.updateTask(task.id, TaskUpdate(status = newStatus))
+                .onSuccess { refreshStats() }
+                .onFailure { e ->
+                    // 失败回滚到原状态，并提示错误
+                    _state.update { s ->
+                        s.copy(
+                            tasks = s.tasks.map { if (it.id == task.id) it.copy(status = task.status) else it },
+                            error = e.message,
+                        )
+                    }
+                }
+        }
+    }
+
+    /** 仅刷新统计（不重拉任务列表），保留看板上已勾选项的显示。 */
+    private fun refreshStats() {
+        viewModelScope.launch {
+            repo.statsSummary().getOrNull()?.let { s -> _state.update { it.copy(summary = s) } }
         }
     }
 }

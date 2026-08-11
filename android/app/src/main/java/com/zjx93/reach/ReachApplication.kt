@@ -32,7 +32,7 @@ class ReachApplication : Application() {
             // 若上次退出前已下载完成（完成广播可能因进程被杀而丢失），启动后补装
             val act = AppUpdater.getActive()
             if (act != null && AppUpdater.getDownloadStatus(this, act.first) == DownloadManager.STATUS_SUCCESSFUL) {
-                AppUpdater.installApk(this, AppUpdater.updateFile(this))
+                AppUpdater.finishDownload(this, act.first)
                 AppUpdater.clearActive(this)
             }
         } catch (e: Throwable) {

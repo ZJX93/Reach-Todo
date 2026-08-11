@@ -27,6 +27,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextDecoration
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavHostController
@@ -130,33 +131,35 @@ private fun StatCard(label: String, value: String, modifier: Modifier = Modifier
 private fun MiniTaskRow(task: TaskOut, vm: DashboardViewModel) {
     val done = task.status == "done"
     Row(
+        // 单一点击入口：整行可点，消除 Row 与内部 Checkbox 双重 clickable 的冲突
         modifier = Modifier.fillMaxWidth().clickable { vm.toggleDone(task) }.padding(vertical = 8.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
-        ZenCheckbox(done) { vm.toggleDone(task) }
+        ZenCheckbox(done)
         Spacer(Modifier.width(10.dp))
         Text(
             task.title,
             style = MaterialTheme.typography.bodyLarge,
             color = if (done) MaterialTheme.colorScheme.onSurfaceVariant else MaterialTheme.colorScheme.onSurface,
+            textDecoration = if (done) TextDecoration.LineThrough else null,
         )
     }
 }
 
 @Composable
-private fun ZenCheckbox(checked: Boolean, onCheckedChange: () -> Unit) {
+private fun ZenCheckbox(checked: Boolean) {
     val stroke by animateColorAsState(
         if (checked) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.outline,
         label = "zenCheckColor",
     )
     val size by animateDpAsState(if (checked) 22.dp else 20.dp, label = "zenCheckSize")
     Box(
+        // 纯展示，不挂载 clickable（点击由外层 Row 统一处理）
         modifier = Modifier
             .size(size)
             .clip(CircleShape)
             .background(if (checked) stroke else Color.Transparent)
-            .border(1.5.dp, stroke, CircleShape)
-            .clickable { onCheckedChange() },
+            .border(1.5.dp, stroke, CircleShape),
         contentAlignment = Alignment.Center,
     ) {
         if (checked) {
