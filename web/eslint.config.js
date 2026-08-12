@@ -9,6 +9,18 @@ export default [
   },
   js.configs.recommended,
   {
+    // public/ 是 Vite 原样拷贝的静态资源目录（含 Service Worker），不走应用打包。
+    // 其中的 JS 运行在 Worker 上下文：importScripts 是 Worker 全局，
+    // firebase 通过 importScripts 由外部脚本注入，按 SW 全局声明以避免 no-undef 误报。
+    files: ["public/**/*.js"],
+    languageOptions: {
+      globals: {
+        ...globals.serviceworker,
+        firebase: "readonly",
+      },
+    },
+  },
+  {
     files: ["**/*.{js,jsx}"],
     languageOptions: {
       ecmaVersion: 2022,

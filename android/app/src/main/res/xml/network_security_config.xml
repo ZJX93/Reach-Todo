@@ -1,0 +1,25 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Reach 网络安全配置：
+  - 默认（base-config）禁止明文流量，强制 HTTPS，缩小中间人攻击面；
+  - 仅对局域网调试主机放开明文（cleartextTrafficPermitted），保证开发期
+    用 RetrofitClient 的 LAN 兜底默认值 http://192.168.9.3:8000 仍可连。
+
+  说明：RetrofitClient.api(serverUrl) 的兜底默认值（192.168.9.3）不在本文件改动，
+  这里只是让该 IP 的明文请求在默认禁止明文的新策略下仍被放行。
+-->
+<network-security-config>
+    <!-- 默认：禁止明文，强制 HTTPS -->
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+
+    <!-- 例外：仅 localhost 与指定 LAN 调试机允许明文（开发/调试用） -->
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">localhost</domain>
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">192.168.9.3</domain>
+    </domain-config>
+</network-security-config>
