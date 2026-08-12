@@ -11,6 +11,7 @@ from fastapi.staticfiles import StaticFiles
 from .config import CORS_ORIGINS, SEED_DEMO_DATA
 from .database import init_db
 from .ratelimit import RateLimitMiddleware
+from .security_headers import SecurityHeadersMiddleware
 from .routers import (
     auth,
     categories,
@@ -70,6 +71,8 @@ app.add_middleware(
 )
 # 登录/注册接口限速（防爆破）
 app.add_middleware(RateLimitMiddleware, limit=10, window=60)
+# 安全响应头中间件：为所有响应（含 SPA 静态文件）补充防护头，放在路由注册之前
+app.add_middleware(SecurityHeadersMiddleware)
 
 app.include_router(auth.router)
 app.include_router(categories.router)
@@ -91,22 +94,38 @@ async def health():
 
 
 # ---------------------------------------------------------------------------
-# 单体前端托管（仅当 server/public 目录存在时启用）
-# 生产镜像由 Dockerfile 把 web/dist 拷入 server/public；本地只跑 API 时该目录
-# 不存在，则跳过，不影响接口调试。
+# 单体前端托管（生产镜像由 Dockerfile 把 web/dist 拷入 server/public）。
+# 无论 server/public 是否存在都注册 catch-all：
+#   - 存在时托管静态资源 + SPA history 回退；
+#   - 不存在时未知路径返回 404（与「未注册该路由」行为一致）。
+# 关键安全点：必须防止 `..` 路径穿越读取 PUBLIC_DIR 之外的文件（见 _spa_catch_all）。
 # ---------------------------------------------------------------------------
 PUBLIC_DIR = os.path.join(os.path.dirname(os.path.dirname(__file__)), "public")
+PUBLIC_DIR_ABS = os.path.abspath(PUBLIC_DIR)
 
-if os.path.isdir(PUBLIC_DIR):
 
-    @app.get("/{full_path:path}")
-    async def _spa_catch_all(full_path: str):
+def _static_candidate_is_safe(full_path: str) -> str | None:
+    """把请求路径解析为 PUBLIC_DIR 内的真实文件绝对路径。
+
+    返回安全路径（绝对路径字符串）；若归一化后越出 PUBLIC_DIR（路径穿越）则返回 None。
+    用 abspath 归一化 `..` 后再做前缀判定，杜绝读取根目录 / 其他目录下的文件。
+    """
+    candidate = os.path.abspath(os.path.join(PUBLIC_DIR, full_path))
+    # 归一化后必须严格位于 PUBLIC_DIR 之内（或等于 PUBLIC_DIR 本身）
+    if candidate == PUBLIC_DIR_ABS or candidate.startswith(PUBLIC_DIR_ABS + os.sep):
+        return candidate
+    return None
+
+
+@app.get("/{full_path:path}")
+async def _spa_catch_all(full_path: str):
+    index = os.path.join(PUBLIC_DIR_ABS, "index.html")
+    candidate = _static_candidate_is_safe(full_path)
+    if candidate is not None and os.path.isfile(candidate):
         # 1) 命中真实静态文件（JS/CSS/图片等）直接返回
-        candidate = os.path.join(PUBLIC_DIR, full_path)
-        if os.path.isfile(candidate):
-            return FileResponse(candidate)
-        # 2) SPA history 路由回退到 index.html（/goals/123 等前端路由）
-        index = os.path.join(PUBLIC_DIR, "index.html")
-        if os.path.exists(index):
-            return FileResponse(index)
-        raise HTTPException(status_code=404, detail="Not found")
+        return FileResponse(candidate)
+    # 2) SPA history 路由回退到 index.html（/goals/123 等前端路由）。
+    #    越界路径（路径穿越）一律不返回越界文件，统一走此回退或 404。
+    if os.path.exists(index):
+        return FileResponse(index)
+    raise HTTPException(status_code=404, detail="Not found")

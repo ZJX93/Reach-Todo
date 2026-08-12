@@ -8,6 +8,7 @@ from ..database import get_db
 from ..models import Category, Goal, Task, Record, User
 from ..deps import get_current_user
 from ..schemas import CategoryOut, GoalOut, TaskOut, RecordOut
+from ..sanitize import sanitize_csv_cell
 
 router = APIRouter(prefix="/api/export", tags=["export"])
 
@@ -71,21 +72,25 @@ async def export_data(
         cat_name = {c.id: c.name for c in cats}
         goal_title = {g.id: g.title for g in goals}
         for t in tasks:
+            # 逐单元格中和公式注入风险（= + - @ 开头加单引号前缀，Excel 呈现为文本）
             w.writerow(
                 [
-                    t.id,
-                    t.title,
-                    cat_name.get(t.category_id, ""),
-                    goal_title.get(t.goal_id, ""),
-                    t.priority,
-                    t.importance,
-                    t.recurrence,
-                    t.status,
-                    t.due_date or "",
-                    t.due_time or "",
-                    (t.note or "").replace("\r", " ").replace("\n", " "),
-                    t.created_at,
-                    t.completed_at or "",
+                    sanitize_csv_cell(v)
+                    for v in [
+                        t.id,
+                        t.title,
+                        cat_name.get(t.category_id, ""),
+                        goal_title.get(t.goal_id, ""),
+                        t.priority,
+                        t.importance,
+                        t.recurrence,
+                        t.status,
+                        t.due_date or "",
+                        t.due_time or "",
+                        (t.note or "").replace("\r", " ").replace("\n", " "),
+                        t.created_at,
+                        t.completed_at or "",
+                    ]
                 ]
             )
         return Response(

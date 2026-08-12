@@ -33,6 +33,25 @@ ALLOWED_ATTRIBUTES = {
 
 _TAG_RE = re.compile(r"<[^>]+>")
 
+# CSV 公式注入：单元格以这些字符开头会被 Excel/Sheets 当作公式执行
+_CSV_FORMULA_PREFIXES = ("=", "+", "-", "@")
+
+
+def sanitize_csv_cell(value) -> str:
+    """中和 CSV 单元格中的公式注入（CSV Injection）风险。
+
+    Excel / WPS / Google Sheets 会把以 `= + - @` 开头的单元格当作公式执行
+    （例如 `=cmd|'/c calc'!A1` 可触发命令执行）。按 Excel 惯例在开头前缀一个单引号 `'`
+    将其强制为文本：单引号本身不显示，内容原样呈现，且不再被当作公式。
+
+    - 非字符串 / 空值：原样转成字符串返回，不改变正常显示与数值。
+    - 仅当首字符命中危险前缀时才加前缀，最小化改动。
+    """
+    text = "" if value is None else str(value)
+    if text and text[0] in _CSV_FORMULA_PREFIXES:
+        return "'" + text
+    return text
+
 
 def sanitize_html(value: str | None) -> str | None:
     """清洗 HTML。空值原样返回。"""
