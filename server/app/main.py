@@ -69,7 +69,7 @@ app.add_middleware(
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
     allow_headers=["Authorization", "Content-Type"],
 )
-# 登录/注册接口限速（防爆破）
+# 登录/注册/改密接口限速（防爆破）；多实例可设 RATE_LIMIT_REDIS_URL 改用 Redis 共享存储
 app.add_middleware(RateLimitMiddleware, limit=10, window=60)
 # 安全响应头中间件：为所有响应（含 SPA 静态文件）补充防护头，放在路由注册之前
 app.add_middleware(SecurityHeadersMiddleware)
